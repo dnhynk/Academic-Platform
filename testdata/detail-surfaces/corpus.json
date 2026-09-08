@@ -1,0 +1,1326 @@
+{
+  "lectures": [
+    {
+      "id": "synthetic-learn-lectures-1",
+      "title": "Synthetic Lecture 05 · Amortized analysis",
+      "segments": [
+        {
+          "id": "s1",
+          "startMs": 0,
+          "endMs": 2000,
+          "raw": "A sequence of operations shares the total cost.",
+          "corrected": "A sequence of operations shares the total cost.",
+          "disposition": null,
+          "reason": null
+        },
+        {
+          "id": "s2",
+          "startMs": 2000,
+          "endMs": 4000,
+          "raw": "Path compression shortens parent chains. The bound uses alpha n.",
+          "corrected": "Path compression shortens parent chains. The bound uses α(n).",
+          "disposition": null,
+          "reason": null
+        },
+        {
+          "id": "s3",
+          "startMs": 4000,
+          "endMs": 6000,
+          "raw": "An unresolved synthetic aside remains outside the document.",
+          "corrected": "An unresolved synthetic aside remains outside the document.",
+          "disposition": "UNMAPPED",
+          "reason": null
+        },
+        {
+          "id": "s4",
+          "startMs": 6000,
+          "endMs": 8000,
+          "raw": "",
+          "corrected": "",
+          "disposition": "REDACTED_WITH_POLICY",
+          "reason": "Synthetic policy redaction-1 · transcript retention exclusion"
+        },
+        {
+          "id": "s5",
+          "startMs": 8000,
+          "endMs": 10000,
+          "raw": "",
+          "corrected": "",
+          "disposition": "UNTRANSCRIBED_FAILURE",
+          "reason": "Synthetic capture journal frame 5 · missing audio frame"
+        },
+        {
+          "id": "s6",
+          "startMs": 10000,
+          "endMs": 12000,
+          "raw": "",
+          "corrected": "",
+          "disposition": "EXCLUDED_NON_SPEECH",
+          "reason": "Synthetic user decision non-speech-1 · silence interval"
+        }
+      ],
+      "paragraphs": [
+        {
+          "id": "p1",
+          "text": "A sequence of operations shares the total cost.",
+          "segmentIds": [
+            "s1"
+          ]
+        },
+        {
+          "id": "p2",
+          "text": "Path compression shortens parent chains. The bound uses α(n).",
+          "segmentIds": [
+            "s2"
+          ]
+        }
+      ],
+      "captures": [
+        {
+          "id": "capture-1",
+          "title": "Board capture · parent chains",
+          "text": "0 ← 1 ← 2 becomes 0 ← {1, 2}",
+          "atMs": 2400,
+          "segmentId": "s2"
+        }
+      ],
+      "review": [
+        {
+          "id": "mark-1",
+          "kind": "Mark Moment",
+          "segmentId": "s2",
+          "note": "Revisit the α(n) argument."
+        },
+        {
+          "id": "confidence-1",
+          "kind": "Low confidence",
+          "segmentId": "s3",
+          "note": "Unmapped aside needs review; never silently omit it."
+        },
+        {
+          "id": "equation-1",
+          "kind": "Equation",
+          "segmentId": "s2",
+          "note": "Compare raw alpha n with corrected α(n)."
+        },
+        {
+          "id": "code-1",
+          "kind": "Code",
+          "segmentId": "s2",
+          "note": "Check parent-pointer update against capture-1."
+        }
+      ],
+      "links": {
+        "Concept candidates and approval": [
+          {
+            "id": "lecture-concept-candidate",
+            "label": "Amortized analysis · awaiting approval",
+            "status": "PROPOSED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-lecture-concept-candidate",
+              "title": "Synthetic evidence · Amortized analysis · awaiting approval",
+              "locator": "fixture-v1 / lecture-concept-candidate",
+              "content": "Raw segment s1 at 00:00.000 supports the candidate."
+            },
+            "target": {
+              "routeId": "learn.concepts",
+              "id": "amortized-analysis"
+            }
+          }
+        ],
+        "Questions at this moment": [
+          {
+            "id": "lecture-question",
+            "label": "Why α(n)? · 00:02.000",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-lecture-question",
+              "title": "Synthetic evidence · Why α(n)? · 00:02.000",
+              "locator": "fixture-v1 / lecture-question",
+              "content": "Question originated at raw segment s2."
+            },
+            "target": {
+              "routeId": "learn.questions",
+              "id": "q-why-inverse-ackermann"
+            }
+          }
+        ],
+        "Prerequisite gaps": [
+          {
+            "id": "lecture-gap",
+            "label": "Tree invariants · insufficient evidence",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-lecture-gap",
+              "title": "Synthetic evidence · Tree invariants · insufficient evidence",
+              "locator": "fixture-v1 / lecture-gap",
+              "content": "Gap fixture: no confirmed fresh explanation evidence for tree invariants."
+            }
+          }
+        ],
+        "Next lecture preparation": [
+          {
+            "id": "lecture-preparation",
+            "label": "Trace three parent updates before Lecture 06",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-lecture-preparation",
+              "title": "Synthetic evidence · Trace three parent updates before Lecture 06",
+              "locator": "fixture-v1 / lecture-preparation",
+              "content": "Prerequisite closure: tree invariant → path compression; next context Lecture 06."
+            }
+          }
+        ],
+        "Assessments": [
+          {
+            "id": "lecture-assessment",
+            "label": "Synthetic Assignment 2 · parent trace",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-lecture-assessment",
+              "title": "Synthetic evidence · Synthetic Assignment 2 · parent trace",
+              "locator": "fixture-v1 / lecture-assessment",
+              "content": "Assessment prompt asks for a trace and explanation; no grade implies mastery."
+            }
+          }
+        ]
+      },
+      "explanation": "Synthetic AI explanation: compare the cost of the whole sequence with the cost of one operation. This explanation is not resolution evidence."
+    }
+  ],
+  "concepts": [
+    {
+      "id": "amortized-analysis",
+      "title": "Amortized analysis",
+      "state": "Practiced",
+      "confidence": "0.81 · synthetic calibrated fixture",
+      "freshness": "Moderate",
+      "lastStrongEvidence": "2026-09-01T09:00:00Z",
+      "relations": {
+        "Evidence timeline": [
+          {
+            "id": "amortized-analysis-lecture",
+            "label": "Lecture 05 → Assignment 2 → Project experiment",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-amortized-analysis-lecture",
+              "title": "Synthetic evidence · Lecture 05 → Assignment 2 → Project experiment",
+              "locator": "fixture-v1 / amortized-analysis-lecture",
+              "content": "2026-08-25: lecture exposure; 2026-08-28: completed synthetic trace; 2026-09-01: independently authored experiment."
+            },
+            "target": {
+              "routeId": "learn.lectures",
+              "id": "synthetic-learn-lectures-1"
+            }
+          }
+        ],
+        "Contradictions": [
+          {
+            "id": "amortized-analysis-contradiction",
+            "label": "Trace disagrees with claimed constant worst-case cost",
+            "status": "CONTESTED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-amortized-analysis-contradiction",
+              "title": "Synthetic evidence · Trace disagrees with claimed constant worst-case cost",
+              "locator": "fixture-v1 / amortized-analysis-contradiction",
+              "content": "Experiment step 3 walks two parent links; claim remains contested beside its evidence."
+            },
+            "target": {
+              "routeId": "build.projects",
+              "id": "synthetic-graph-lab"
+            }
+          }
+        ],
+        "Prerequisites": [
+          {
+            "id": "amortized-analysis-prerequisite",
+            "label": "Tree invariants",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-amortized-analysis-prerequisite",
+              "title": "Synthetic evidence · Tree invariants",
+              "locator": "fixture-v1 / amortized-analysis-prerequisite",
+              "content": "Synthetic prerequisite relation: preserve the root and parent reachability."
+            }
+          }
+        ],
+        "Used in": [
+          {
+            "id": "amortized-analysis-used-in",
+            "label": "Disjoint set union",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-amortized-analysis-used-in",
+              "title": "Synthetic evidence · Disjoint set union",
+              "locator": "fixture-v1 / amortized-analysis-used-in",
+              "content": "Reachable find() operation uses path compression."
+            },
+            "target": {
+              "routeId": "learn.concepts",
+              "id": "union-find"
+            }
+          }
+        ],
+        "Open questions": [
+          {
+            "id": "amortized-analysis-question",
+            "label": "Why does the bound involve α(n)?",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-amortized-analysis-question",
+              "title": "Synthetic evidence · Why does the bound involve α(n)?",
+              "locator": "fixture-v1 / amortized-analysis-question",
+              "content": "Question is OPEN; an AI explanation alone cannot resolve it."
+            },
+            "target": {
+              "routeId": "learn.questions",
+              "id": "q-why-inverse-ackermann"
+            }
+          }
+        ],
+        "SNU courses, lectures and assessments": [
+          {
+            "id": "amortized-analysis-course",
+            "label": "Synthetic Algorithms · Course / Lecture 05 / Assignment 2",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-amortized-analysis-course",
+              "title": "Synthetic evidence · Synthetic Algorithms · Course / Lecture 05 / Assignment 2",
+              "locator": "fixture-v1 / amortized-analysis-course",
+              "content": "Synthetic course 4190.310; actual fixture lecture at s2 and assessment trace, not a predicted offering."
+            },
+            "target": {
+              "routeId": "academic.courses",
+              "id": "4190.310"
+            }
+          }
+        ],
+        "Projects": [
+          {
+            "id": "amortized-analysis-code",
+            "label": "Graph lab · exact code and experiment",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-amortized-analysis-code",
+              "title": "Synthetic evidence · Graph lab · exact code and experiment",
+              "locator": "snapshot 1111111 · src/union.ts:2–5",
+              "content": "src/union.ts:2–5 at snapshot 1111111; experiment trace: find(2) follows parent[2] then parent[1]."
+            },
+            "target": {
+              "routeId": "build.projects",
+              "id": "synthetic-graph-lab"
+            }
+          }
+        ],
+        "Competencies": [
+          {
+            "id": "amortized-analysis-competency-candidate",
+            "label": "Complexity diagnosis · evidence candidate",
+            "status": "PROPOSED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-amortized-analysis-competency-candidate",
+              "title": "Synthetic evidence · Complexity diagnosis · evidence candidate",
+              "locator": "fixture-v1 / amortized-analysis-competency-candidate",
+              "content": "Candidate based on the independent trace; no repository-wide personal skill claim."
+            },
+            "target": {
+              "routeId": "build.projects",
+              "id": "synthetic-graph-lab"
+            }
+          }
+        ],
+        "Roles": [
+          {
+            "id": "amortized-analysis-role",
+            "label": "Backend · Infrastructure",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-amortized-analysis-role",
+              "title": "Synthetic evidence · Backend · Infrastructure",
+              "locator": "fixture-v1 / amortized-analysis-role",
+              "content": "Role relevance links to complexity diagnosis; following a role does not declare a career choice."
+            }
+          }
+        ]
+      },
+      "explanation": "Synthetic AI explanation: the evidence suggests practice, with a remaining worst-case misconception. Inspect the source before deciding."
+    },
+    {
+      "id": "union-find",
+      "title": "Disjoint set union",
+      "state": "Practiced",
+      "confidence": "0.81 · synthetic calibrated fixture",
+      "freshness": "Moderate",
+      "lastStrongEvidence": "2026-09-01T09:00:00Z",
+      "relations": {
+        "Evidence timeline": [
+          {
+            "id": "union-find-lecture",
+            "label": "Lecture 05 → Assignment 2 → Project experiment",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-union-find-lecture",
+              "title": "Synthetic evidence · Lecture 05 → Assignment 2 → Project experiment",
+              "locator": "fixture-v1 / union-find-lecture",
+              "content": "2026-08-25: lecture exposure; 2026-08-28: completed synthetic trace; 2026-09-01: independently authored experiment."
+            },
+            "target": {
+              "routeId": "learn.lectures",
+              "id": "synthetic-learn-lectures-1"
+            }
+          }
+        ],
+        "Contradictions": [
+          {
+            "id": "union-find-contradiction",
+            "label": "Trace disagrees with claimed constant worst-case cost",
+            "status": "CONTESTED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-union-find-contradiction",
+              "title": "Synthetic evidence · Trace disagrees with claimed constant worst-case cost",
+              "locator": "fixture-v1 / union-find-contradiction",
+              "content": "Experiment step 3 walks two parent links; claim remains contested beside its evidence."
+            },
+            "target": {
+              "routeId": "build.projects",
+              "id": "synthetic-graph-lab"
+            }
+          }
+        ],
+        "Prerequisites": [
+          {
+            "id": "union-find-prerequisite",
+            "label": "Tree invariants",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-union-find-prerequisite",
+              "title": "Synthetic evidence · Tree invariants",
+              "locator": "fixture-v1 / union-find-prerequisite",
+              "content": "Synthetic prerequisite relation: preserve the root and parent reachability."
+            }
+          }
+        ],
+        "Used in": [
+          {
+            "id": "union-find-used-in",
+            "label": "Disjoint set union",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-union-find-used-in",
+              "title": "Synthetic evidence · Disjoint set union",
+              "locator": "fixture-v1 / union-find-used-in",
+              "content": "Reachable find() operation uses path compression."
+            },
+            "target": {
+              "routeId": "learn.concepts",
+              "id": "union-find"
+            }
+          }
+        ],
+        "Open questions": [
+          {
+            "id": "union-find-question",
+            "label": "Why does the bound involve α(n)?",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-union-find-question",
+              "title": "Synthetic evidence · Why does the bound involve α(n)?",
+              "locator": "fixture-v1 / union-find-question",
+              "content": "Question is OPEN; an AI explanation alone cannot resolve it."
+            },
+            "target": {
+              "routeId": "learn.questions",
+              "id": "q-why-inverse-ackermann"
+            }
+          }
+        ],
+        "SNU courses, lectures and assessments": [
+          {
+            "id": "union-find-course",
+            "label": "Synthetic Algorithms · Course / Lecture 05 / Assignment 2",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-union-find-course",
+              "title": "Synthetic evidence · Synthetic Algorithms · Course / Lecture 05 / Assignment 2",
+              "locator": "fixture-v1 / union-find-course",
+              "content": "Synthetic course 4190.310; actual fixture lecture at s2 and assessment trace, not a predicted offering."
+            },
+            "target": {
+              "routeId": "academic.courses",
+              "id": "4190.310"
+            }
+          }
+        ],
+        "Projects": [
+          {
+            "id": "union-find-code",
+            "label": "Graph lab · exact code and experiment",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-union-find-code",
+              "title": "Synthetic evidence · Graph lab · exact code and experiment",
+              "locator": "snapshot 1111111 · src/union.ts:2–5",
+              "content": "src/union.ts:2–5 at snapshot 1111111; experiment trace: find(2) follows parent[2] then parent[1]."
+            },
+            "target": {
+              "routeId": "build.projects",
+              "id": "synthetic-graph-lab"
+            }
+          }
+        ],
+        "Competencies": [
+          {
+            "id": "union-find-competency-candidate",
+            "label": "Complexity diagnosis · evidence candidate",
+            "status": "PROPOSED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-union-find-competency-candidate",
+              "title": "Synthetic evidence · Complexity diagnosis · evidence candidate",
+              "locator": "fixture-v1 / union-find-competency-candidate",
+              "content": "Candidate based on the independent trace; no repository-wide personal skill claim."
+            },
+            "target": {
+              "routeId": "build.projects",
+              "id": "synthetic-graph-lab"
+            }
+          }
+        ],
+        "Roles": [
+          {
+            "id": "union-find-role",
+            "label": "Backend · Infrastructure",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-union-find-role",
+              "title": "Synthetic evidence · Backend · Infrastructure",
+              "locator": "fixture-v1 / union-find-role",
+              "content": "Role relevance links to complexity diagnosis; following a role does not declare a career choice."
+            }
+          }
+        ]
+      },
+      "explanation": "Synthetic AI explanation: the evidence suggests practice, with a remaining worst-case misconception. Inspect the source before deciding."
+    }
+  ],
+  "questions": [
+    {
+      "id": "q-why-inverse-ackermann",
+      "origin": "Lecture",
+      "isNew": false,
+      "status": "OPEN",
+      "goalRelevance": "Active graph-lab goal: explain find() cost",
+      "goalRank": 3,
+      "nextContext": "Lecture 06 · amortized proof, then graph-lab review",
+      "ageDays": 12,
+      "revisions": [
+        {
+          "at": "2026-08-27T09:00:00Z",
+          "text": "Why is find nearly constant?",
+          "concepts": [
+            {
+              "id": "question-concept-v1",
+              "label": "Disjoint set union",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-concept-v1",
+                "title": "Synthetic evidence · Disjoint set union",
+                "locator": "fixture-v1 / question-concept-v1",
+                "content": "Initial linked concept at creation."
+              },
+              "target": {
+                "routeId": "learn.concepts",
+                "id": "union-find"
+              }
+            }
+          ],
+          "resolutionEvidence": []
+        },
+        {
+          "at": "2026-09-01T09:00:00Z",
+          "text": "Why does the bound involve α(n)?",
+          "concepts": [
+            {
+              "id": "question-concept-v2",
+              "label": "Amortized analysis",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-concept-v2",
+                "title": "Synthetic evidence · Amortized analysis",
+                "locator": "fixture-v1 / question-concept-v2",
+                "content": "Append-only question revision adds a more precise concept."
+              },
+              "target": {
+                "routeId": "learn.concepts",
+                "id": "amortized-analysis"
+              }
+            }
+          ],
+          "resolutionEvidence": [
+            {
+              "id": "question-resolution-candidate",
+              "label": "Trace experiment · partial evidence, unresolved",
+              "status": "PROPOSED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-resolution-candidate",
+                "title": "Synthetic evidence · Trace experiment · partial evidence, unresolved",
+                "locator": "fixture-v1 / question-resolution-candidate",
+                "content": "A trace demonstrates behavior but does not prove the asymptotic bound."
+              },
+              "target": {
+                "routeId": "build.projects",
+                "id": "synthetic-graph-lab"
+              }
+            }
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "id": "question-origin",
+          "label": "Lecture origin · s2 at 00:02.000",
+          "status": "CONFIRMED",
+          "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+          "source": {
+            "id": "source-question-origin",
+            "title": "Synthetic evidence · Lecture origin · s2 at 00:02.000",
+            "locator": "fixture-v1 / question-origin",
+            "content": "Raw: The bound uses alpha n. Corrected: The bound uses α(n)."
+          },
+          "target": {
+            "routeId": "learn.lectures",
+            "id": "synthetic-learn-lectures-1"
+          }
+        }
+      ],
+      "explanation": "Synthetic AI explanation: α is the inverse Ackermann function. This answer cannot mark the question resolved."
+    },
+    {
+      "id": "inbox-0",
+      "origin": "Lecture",
+      "isNew": true,
+      "status": "OPEN",
+      "goalRelevance": "No active goal linkage yet",
+      "goalRank": 0,
+      "nextContext": "Lecture 06 · amortized proof, then graph-lab review",
+      "ageDays": 1,
+      "revisions": [
+        {
+          "at": "2026-08-27T09:00:00Z",
+          "text": "Why is find nearly constant?",
+          "concepts": [
+            {
+              "id": "question-concept-v1",
+              "label": "Disjoint set union",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-concept-v1",
+                "title": "Synthetic evidence · Disjoint set union",
+                "locator": "fixture-v1 / question-concept-v1",
+                "content": "Initial linked concept at creation."
+              },
+              "target": {
+                "routeId": "learn.concepts",
+                "id": "union-find"
+              }
+            }
+          ],
+          "resolutionEvidence": []
+        },
+        {
+          "at": "2026-09-01T09:00:00Z",
+          "text": "Why does the bound involve α(n)?",
+          "concepts": [
+            {
+              "id": "question-concept-v2",
+              "label": "Amortized analysis",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-concept-v2",
+                "title": "Synthetic evidence · Amortized analysis",
+                "locator": "fixture-v1 / question-concept-v2",
+                "content": "Append-only question revision adds a more precise concept."
+              },
+              "target": {
+                "routeId": "learn.concepts",
+                "id": "amortized-analysis"
+              }
+            }
+          ],
+          "resolutionEvidence": [
+            {
+              "id": "question-resolution-candidate",
+              "label": "Trace experiment · partial evidence, unresolved",
+              "status": "PROPOSED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-resolution-candidate",
+                "title": "Synthetic evidence · Trace experiment · partial evidence, unresolved",
+                "locator": "fixture-v1 / question-resolution-candidate",
+                "content": "A trace demonstrates behavior but does not prove the asymptotic bound."
+              },
+              "target": {
+                "routeId": "build.projects",
+                "id": "synthetic-graph-lab"
+              }
+            }
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "id": "question-origin",
+          "label": "Lecture origin · s2 at 00:02.000",
+          "status": "CONFIRMED",
+          "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+          "source": {
+            "id": "source-question-origin",
+            "title": "Synthetic evidence · Lecture origin · s2 at 00:02.000",
+            "locator": "fixture-v1 / question-origin",
+            "content": "Raw: The bound uses alpha n. Corrected: The bound uses α(n)."
+          },
+          "target": {
+            "routeId": "learn.lectures",
+            "id": "synthetic-learn-lectures-1"
+          }
+        }
+      ],
+      "explanation": "Synthetic AI explanation: α is the inverse Ackermann function. This answer cannot mark the question resolved."
+    },
+    {
+      "id": "inbox-1",
+      "origin": "Repository",
+      "isNew": true,
+      "status": "OPEN",
+      "goalRelevance": "Upcoming graph-lab review",
+      "goalRank": 1,
+      "nextContext": "Lecture 06 · amortized proof, then graph-lab review",
+      "ageDays": 2,
+      "revisions": [
+        {
+          "at": "2026-08-27T09:00:00Z",
+          "text": "Why is find nearly constant?",
+          "concepts": [
+            {
+              "id": "question-concept-v1",
+              "label": "Disjoint set union",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-concept-v1",
+                "title": "Synthetic evidence · Disjoint set union",
+                "locator": "fixture-v1 / question-concept-v1",
+                "content": "Initial linked concept at creation."
+              },
+              "target": {
+                "routeId": "learn.concepts",
+                "id": "union-find"
+              }
+            }
+          ],
+          "resolutionEvidence": []
+        },
+        {
+          "at": "2026-09-01T09:00:00Z",
+          "text": "Why does the bound involve α(n)?",
+          "concepts": [
+            {
+              "id": "question-concept-v2",
+              "label": "Amortized analysis",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-concept-v2",
+                "title": "Synthetic evidence · Amortized analysis",
+                "locator": "fixture-v1 / question-concept-v2",
+                "content": "Append-only question revision adds a more precise concept."
+              },
+              "target": {
+                "routeId": "learn.concepts",
+                "id": "amortized-analysis"
+              }
+            }
+          ],
+          "resolutionEvidence": [
+            {
+              "id": "question-resolution-candidate",
+              "label": "Trace experiment · partial evidence, unresolved",
+              "status": "PROPOSED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-resolution-candidate",
+                "title": "Synthetic evidence · Trace experiment · partial evidence, unresolved",
+                "locator": "fixture-v1 / question-resolution-candidate",
+                "content": "A trace demonstrates behavior but does not prove the asymptotic bound."
+              },
+              "target": {
+                "routeId": "build.projects",
+                "id": "synthetic-graph-lab"
+              }
+            }
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "id": "question-origin",
+          "label": "Lecture origin · s2 at 00:02.000",
+          "status": "CONFIRMED",
+          "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+          "source": {
+            "id": "source-question-origin",
+            "title": "Synthetic evidence · Lecture origin · s2 at 00:02.000",
+            "locator": "fixture-v1 / question-origin",
+            "content": "Raw: The bound uses alpha n. Corrected: The bound uses α(n)."
+          },
+          "target": {
+            "routeId": "learn.lectures",
+            "id": "synthetic-learn-lectures-1"
+          }
+        }
+      ],
+      "explanation": "Synthetic AI explanation: α is the inverse Ackermann function. This answer cannot mark the question resolved."
+    },
+    {
+      "id": "inbox-2",
+      "origin": "Concept detail",
+      "isNew": true,
+      "status": "OPEN",
+      "goalRelevance": "Upcoming graph-lab review",
+      "goalRank": 2,
+      "nextContext": "Lecture 06 · amortized proof, then graph-lab review",
+      "ageDays": 3,
+      "revisions": [
+        {
+          "at": "2026-08-27T09:00:00Z",
+          "text": "Why is find nearly constant?",
+          "concepts": [
+            {
+              "id": "question-concept-v1",
+              "label": "Disjoint set union",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-concept-v1",
+                "title": "Synthetic evidence · Disjoint set union",
+                "locator": "fixture-v1 / question-concept-v1",
+                "content": "Initial linked concept at creation."
+              },
+              "target": {
+                "routeId": "learn.concepts",
+                "id": "union-find"
+              }
+            }
+          ],
+          "resolutionEvidence": []
+        },
+        {
+          "at": "2026-09-01T09:00:00Z",
+          "text": "Why does the bound involve α(n)?",
+          "concepts": [
+            {
+              "id": "question-concept-v2",
+              "label": "Amortized analysis",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-concept-v2",
+                "title": "Synthetic evidence · Amortized analysis",
+                "locator": "fixture-v1 / question-concept-v2",
+                "content": "Append-only question revision adds a more precise concept."
+              },
+              "target": {
+                "routeId": "learn.concepts",
+                "id": "amortized-analysis"
+              }
+            }
+          ],
+          "resolutionEvidence": [
+            {
+              "id": "question-resolution-candidate",
+              "label": "Trace experiment · partial evidence, unresolved",
+              "status": "PROPOSED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-resolution-candidate",
+                "title": "Synthetic evidence · Trace experiment · partial evidence, unresolved",
+                "locator": "fixture-v1 / question-resolution-candidate",
+                "content": "A trace demonstrates behavior but does not prove the asymptotic bound."
+              },
+              "target": {
+                "routeId": "build.projects",
+                "id": "synthetic-graph-lab"
+              }
+            }
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "id": "question-origin",
+          "label": "Lecture origin · s2 at 00:02.000",
+          "status": "CONFIRMED",
+          "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+          "source": {
+            "id": "source-question-origin",
+            "title": "Synthetic evidence · Lecture origin · s2 at 00:02.000",
+            "locator": "fixture-v1 / question-origin",
+            "content": "Raw: The bound uses alpha n. Corrected: The bound uses α(n)."
+          },
+          "target": {
+            "routeId": "learn.lectures",
+            "id": "synthetic-learn-lectures-1"
+          }
+        }
+      ],
+      "explanation": "Synthetic AI explanation: α is the inverse Ackermann function. This answer cannot mark the question resolved."
+    },
+    {
+      "id": "question-partial",
+      "origin": "Lecture",
+      "isNew": false,
+      "status": "PARTIAL",
+      "goalRelevance": "Active graph-lab goal: explain find() cost",
+      "goalRank": 0,
+      "nextContext": "Lecture 06 · amortized proof, then graph-lab review",
+      "ageDays": 2,
+      "revisions": [
+        {
+          "at": "2026-09-01T09:00:00Z",
+          "text": "PARTIAL: synthetic parent-trace question",
+          "concepts": [
+            {
+              "id": "question-concept-v2",
+              "label": "Amortized analysis",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-concept-v2",
+                "title": "Synthetic evidence · Amortized analysis",
+                "locator": "fixture-v1 / question-concept-v2",
+                "content": "Append-only question revision adds a more precise concept."
+              },
+              "target": {
+                "routeId": "learn.concepts",
+                "id": "amortized-analysis"
+              }
+            }
+          ],
+          "resolutionEvidence": [
+            {
+              "id": "question-PARTIAL-evidence",
+              "label": "PARTIAL lifecycle evidence",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-PARTIAL-evidence",
+                "title": "Synthetic evidence · PARTIAL lifecycle evidence",
+                "locator": "fixture-v1 / question-PARTIAL-evidence",
+                "content": "Trace answers one sub-question; proof remains open."
+              },
+              "target": {
+                "routeId": "learn.questions",
+                "id": "q-why-inverse-ackermann"
+              }
+            }
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "id": "question-origin",
+          "label": "Lecture origin · s2 at 00:02.000",
+          "status": "CONFIRMED",
+          "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+          "source": {
+            "id": "source-question-origin",
+            "title": "Synthetic evidence · Lecture origin · s2 at 00:02.000",
+            "locator": "fixture-v1 / question-origin",
+            "content": "Raw: The bound uses alpha n. Corrected: The bound uses α(n)."
+          },
+          "target": {
+            "routeId": "learn.lectures",
+            "id": "synthetic-learn-lectures-1"
+          }
+        }
+      ],
+      "explanation": "Synthetic AI explanation: α is the inverse Ackermann function. This answer cannot mark the question resolved."
+    },
+    {
+      "id": "question-resolved",
+      "origin": "Lecture",
+      "isNew": false,
+      "status": "RESOLVED",
+      "goalRelevance": "Active graph-lab goal: explain find() cost",
+      "goalRank": 1,
+      "nextContext": "Lecture 06 · amortized proof, then graph-lab review",
+      "ageDays": 3,
+      "revisions": [
+        {
+          "at": "2026-09-01T09:00:00Z",
+          "text": "RESOLVED: synthetic parent-trace question",
+          "concepts": [
+            {
+              "id": "question-concept-v2",
+              "label": "Amortized analysis",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-concept-v2",
+                "title": "Synthetic evidence · Amortized analysis",
+                "locator": "fixture-v1 / question-concept-v2",
+                "content": "Append-only question revision adds a more precise concept."
+              },
+              "target": {
+                "routeId": "learn.concepts",
+                "id": "amortized-analysis"
+              }
+            }
+          ],
+          "resolutionEvidence": [
+            {
+              "id": "question-RESOLVED-evidence",
+              "label": "RESOLVED lifecycle evidence",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-RESOLVED-evidence",
+                "title": "Synthetic evidence · RESOLVED lifecycle evidence",
+                "locator": "fixture-v1 / question-RESOLVED-evidence",
+                "content": "Synthetic user confirmation resolves this question using the completed parent trace."
+              },
+              "target": {
+                "routeId": "learn.questions",
+                "id": "q-why-inverse-ackermann"
+              }
+            }
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "id": "question-origin",
+          "label": "Lecture origin · s2 at 00:02.000",
+          "status": "CONFIRMED",
+          "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+          "source": {
+            "id": "source-question-origin",
+            "title": "Synthetic evidence · Lecture origin · s2 at 00:02.000",
+            "locator": "fixture-v1 / question-origin",
+            "content": "Raw: The bound uses alpha n. Corrected: The bound uses α(n)."
+          },
+          "target": {
+            "routeId": "learn.lectures",
+            "id": "synthetic-learn-lectures-1"
+          }
+        }
+      ],
+      "explanation": "Synthetic AI explanation: α is the inverse Ackermann function. This answer cannot mark the question resolved."
+    },
+    {
+      "id": "question-reframed",
+      "origin": "Lecture",
+      "isNew": false,
+      "status": "REFRAMED",
+      "goalRelevance": "Active graph-lab goal: explain find() cost",
+      "goalRank": 2,
+      "nextContext": "Lecture 06 · amortized proof, then graph-lab review",
+      "ageDays": 4,
+      "revisions": [
+        {
+          "at": "2026-09-01T09:00:00Z",
+          "text": "REFRAMED: synthetic parent-trace question",
+          "concepts": [
+            {
+              "id": "question-concept-v2",
+              "label": "Amortized analysis",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-concept-v2",
+                "title": "Synthetic evidence · Amortized analysis",
+                "locator": "fixture-v1 / question-concept-v2",
+                "content": "Append-only question revision adds a more precise concept."
+              },
+              "target": {
+                "routeId": "learn.concepts",
+                "id": "amortized-analysis"
+              }
+            }
+          ],
+          "resolutionEvidence": [
+            {
+              "id": "question-REFRAMED-evidence",
+              "label": "REFRAMED lifecycle evidence",
+              "status": "CONFIRMED",
+              "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+              "source": {
+                "id": "source-question-REFRAMED-evidence",
+                "title": "Synthetic evidence · REFRAMED lifecycle evidence",
+                "locator": "fixture-v1 / question-REFRAMED-evidence",
+                "content": "Original question retained; reframed as q-why-inverse-ackermann."
+              },
+              "target": {
+                "routeId": "learn.questions",
+                "id": "q-why-inverse-ackermann"
+              }
+            }
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "id": "question-origin",
+          "label": "Lecture origin · s2 at 00:02.000",
+          "status": "CONFIRMED",
+          "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+          "source": {
+            "id": "source-question-origin",
+            "title": "Synthetic evidence · Lecture origin · s2 at 00:02.000",
+            "locator": "fixture-v1 / question-origin",
+            "content": "Raw: The bound uses alpha n. Corrected: The bound uses α(n)."
+          },
+          "target": {
+            "routeId": "learn.lectures",
+            "id": "synthetic-learn-lectures-1"
+          }
+        }
+      ],
+      "explanation": "Synthetic AI explanation: α is the inverse Ackermann function. This answer cannot mark the question resolved."
+    }
+  ],
+  "projects": [
+    {
+      "id": "synthetic-graph-lab",
+      "title": "Synthetic graph lab",
+      "goal": "Explain and validate parent-chain compression",
+      "successCriteria": [
+        "Preserve connectivity after each union",
+        "Provide an independent trace and complexity explanation"
+      ],
+      "repository": "synthetic/graph-lab",
+      "branch": "exercise",
+      "snapshot": "1111111",
+      "currentSnapshot": "2222222",
+      "capturedAt": "2026-09-01T09:00:00Z",
+      "currentAt": "2026-09-08T09:00:00Z",
+      "dirty": true,
+      "relations": {
+        "Architecture map": [
+          {
+            "id": "project-architecture",
+            "label": "CLI → union module → parent array",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-project-architecture",
+              "title": "Synthetic evidence · CLI → union module → parent array",
+              "locator": "fixture-v1 / project-architecture",
+              "content": "Directed component dependencies: CLI calls union module; union module owns parent array."
+            }
+          }
+        ],
+        "ADR / spec / code drift": [
+          {
+            "id": "project-drift",
+            "label": "INTENDED_NOT_IMPLEMENTED · rollback",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-project-drift",
+              "title": "Synthetic evidence · INTENDED_NOT_IMPLEMENTED · rollback",
+              "locator": "fixture-v1 / project-drift",
+              "content": "Approved synthetic ADR asks for rollback; snapshot 1111111 contains no rollback operation. Both evidence lanes remain visible."
+            }
+          }
+        ],
+        "OBSERVED": [
+          {
+            "id": "project-observed-code",
+            "label": "Path compression · src/union.ts:2–5",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-project-observed-code",
+              "title": "Synthetic evidence · Path compression · src/union.ts:2–5",
+              "locator": "snapshot 1111111 · src/union.ts:2–5",
+              "content": "Observed reachable find call with parent-pointer writes in this component only."
+            },
+            "target": {
+              "routeId": "learn.concepts",
+              "id": "amortized-analysis"
+            }
+          }
+        ],
+        "REQUIRED": [
+          {
+            "id": "project-required",
+            "label": "Tree invariant reasoning",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-project-required",
+              "title": "Synthetic evidence · Tree invariant reasoning",
+              "locator": "fixture-v1 / project-required",
+              "content": "Current goal → preserve connectivity → parent update invariant → tree reasoning → insufficient explanation evidence."
+            }
+          }
+        ],
+        "WOULD_BENEFIT_FROM": [
+          {
+            "id": "project-benefit",
+            "label": "Rollback log if interactive history is added",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-project-benefit",
+              "title": "Synthetic evidence · Rollback log if interactive history is added",
+              "locator": "fixture-v1 / project-benefit",
+              "content": "Trigger: interactive history requested (not active). Benefit: reversible union. Trade-off: additional memory and complexity."
+            }
+          }
+        ],
+        "Open questions and issues / incidents": [
+          {
+            "id": "project-question",
+            "label": "Why α(n)? · issue SYN-4",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-project-question",
+              "title": "Synthetic evidence · Why α(n)? · issue SYN-4",
+              "locator": "fixture-v1 / project-question",
+              "content": "SYN-4 asks for a proof; no incident is inferred from the open question."
+            },
+            "target": {
+              "routeId": "learn.questions",
+              "id": "q-why-inverse-ackermann"
+            }
+          }
+        ],
+        "Active Critical Path": [
+          {
+            "id": "project-path",
+            "label": "Tree invariants → trace → complexity explanation",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-project-path",
+              "title": "Synthetic evidence · Tree invariants → trace → complexity explanation",
+              "locator": "fixture-v1 / project-path",
+              "content": "Active goal scope: synthetic graph-lab goal version 1."
+            }
+          }
+        ],
+        "Build → Learn branch": [
+          {
+            "id": "project-build-learn",
+            "label": "Declare trace result, then run the experiment",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-project-build-learn",
+              "title": "Synthetic evidence · Declare trace result, then run the experiment",
+              "locator": "fixture-v1 / project-build-learn",
+              "content": "Pre-declared validation expects root identity and connectivity to survive compression."
+            }
+          }
+        ],
+        "SNU Course / Offering and external options": [
+          {
+            "id": "project-course",
+            "label": "Synthetic Algorithms · confirmed fixture offering",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-project-course",
+              "title": "Synthetic evidence · Synthetic Algorithms · confirmed fixture offering",
+              "locator": "fixture-v1 / project-course",
+              "content": "Course 4190.310; synthetic autumn offering; compare external self-study parent trace as an alternative."
+            },
+            "target": {
+              "routeId": "academic.courses",
+              "id": "4190.310"
+            }
+          }
+        ],
+        "Competency evidence and authorship": [
+          {
+            "id": "project-authorship-candidate",
+            "label": "Independent trace · authorship confirmed in fixture",
+            "status": "PROPOSED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-project-authorship-candidate",
+              "title": "Synthetic evidence · Independent trace · authorship confirmed in fixture",
+              "locator": "fixture-v1 / project-authorship-candidate",
+              "content": "Trace authored by synthetic user; generated scaffold is excluded from personal competency promotion."
+            }
+          }
+        ],
+        "Snapshot semantic diff": [
+          {
+            "id": "project-diff",
+            "label": "1111111 → 2222222 · CODE_CHANGED",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-project-diff",
+              "title": "Synthetic evidence · 1111111 → 2222222 · CODE_CHANGED",
+              "locator": "fixture-v1 / project-diff",
+              "content": "Same analyzer build synthetic-analyzer-v1: newer snapshot adds a rollback log. Dependency inventory unchanged; semantic channel changed."
+            }
+          }
+        ],
+        "Stack inventory (supporting information)": [
+          {
+            "id": "project-stack",
+            "label": "TypeScript manifest · PRESENT_ONLY",
+            "status": "CONFIRMED",
+            "confidence": "Synthetic calibrated example · 0.81 (fixture, not a personal assessment)",
+            "source": {
+              "id": "source-project-stack",
+              "title": "Synthetic evidence · TypeScript manifest · PRESENT_ONLY",
+              "locator": "fixture-v1 / project-stack",
+              "content": "Manifest presence does not establish observed use or personal competence."
+            }
+          }
+        ]
+      },
+      "files": [
+        {
+          "path": "src/union.ts",
+          "text": "// 합성 fixture\nexport function find(parent: number[], x: number): number {\n  if (parent[x] !== x) parent[x] = find(parent, parent[x]);\n  return parent[x];\n}\n"
+        }
+      ],
+      "explanation": "Synthetic AI explanation: compare the required invariant with the exact code and trace. Recommendations remain scoped to this goal and snapshot."
+    }
+  ]
+}
