@@ -66,7 +66,7 @@ crates/store-platform/src/unix.rs [priv] mod tests :: #[cfg(target_os = "macos")
 crates/store-platform/src/unix.rs [priv] use crate::{ DirectoryAccess, FinalPathStatus, LocalityUnknown, PathCapabilities, PathCapabilityError, PathCapabilityErrorCode, RootState, StorageLocality, } |f4d2b525529c1d2a
 crates/store-platform/src/unix.rs [priv] use rustix::{ fs::{self as rfs, AtFlags, Dir, FileType, Mode, OFlags}, io::Errno, process, } |503a0b6cdc2e20e5
 crates/store-platform/src/unix.rs [priv] use std::{ ffi::OsStr, os::fd::OwnedFd, path::{Component, Path, PathBuf}, } |2f3be4f082d949da
-crates/store-platform/src/unix.rs [pub(crate)] fn read_detail_incarnation(root: &std::path::Path) -> std::io::Result<[u8; 32]> |4e5561fe3e8048eb
+crates/store-platform/src/unix.rs [pub(crate)] fn read_detail_incarnation(root: &std::path::Path) -> std::io::Result<[u8; 32]> |cad8d9c91a7b588c
 crates/store-platform/src/unix.rs [pub(super)] fn create_owner_only_directory( path: &Path, ) -> Result<PathCapabilities, PathCapabilityError> |b4a516ae446e97f8
 crates/store-platform/src/unix.rs [pub(super)] fn inspect_path(path: &Path) -> Result<PathCapabilities, PathCapabilityError> |130f492aff857148
 crates/store-platform/src/windows.rs [priv] #[allow(unsafe_code)] fn create_directory_relative( parent: &OwnedHandle, name: &OsStr, descriptor: &LocalAllocation, ) -> Result<OpenedComponent, PathCapabilityError> |c616ac9c75b24eb7

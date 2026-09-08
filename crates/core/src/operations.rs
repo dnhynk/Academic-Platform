@@ -7,9 +7,9 @@
 //! surfaces, so `academic-cli` keeps a thin dependency edge and no write
 //! capability.
 //!
-//! Everything here is bound to the sole repository-allowlisted synthetic
-//! fixture. No parameter, feature, or environment lookup admits another corpus,
-//! and none may be added.
+//! Ingest stays bound to the sole repository-allowlisted fixture. Read-only
+//! operations also consume the explicitly imported synthetic detail profile,
+//! verified against this build's independent synthetic authorization.
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -26,8 +26,8 @@ use academic_portability::{
     backup::{BackupReceipt, backup_profile},
     export::{ExportReceipt, export_profile},
     restore::{
-        PROJECTION_SIDECAR_FILE, ProjectionRebuildTarget, RestorePlan, RestoreReceipt,
-        restore_profile,
+        PROJECTION_SIDECAR_FILE, ProjectionRebuildTarget, RestoreMaterial, RestoreReceipt,
+        restore_profile_with_material,
     },
     verify::{CanonicalDatabase, read_canonical_rows},
 };
@@ -287,21 +287,6 @@ fn fixture_material() -> Result<FixtureMaterial, OperationError> {
     })
 }
 
-/// Returns the locator keyring for every security domain the fixture uses.
-///
-/// The key never leaves this crate: callers receive a constructed keyring and
-/// cannot read its bytes back out.
-fn fixture_keyring(material: &FixtureMaterial) -> Result<DomainKeyring, OperationError> {
-    let mut keyring = DomainKeyring::new();
-    let mut domains = BTreeSet::new();
-    for descriptor in &material.descriptors {
-        if domains.insert(descriptor.domain_id) {
-            keyring.insert(descriptor.domain_id, FIXTURE_LOCATOR_KEY)?;
-        }
-    }
-    Ok(keyring)
-}
-
 fn fixture_domains(material: &FixtureMaterial) -> Vec<DomainId> {
     material
         .descriptors
@@ -310,6 +295,111 @@ fn fixture_domains(material: &FixtureMaterial) -> Vec<DomainId> {
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect()
+}
+
+/// Domain and predicate closure derived from independently verified signed history.
+struct SyntheticMaterial {
+    descriptors: Vec<ArtifactDescriptor>,
+    domains: BTreeSet<DomainId>,
+    policies: PredicatePolicies,
+    head: u64,
+}
+
+fn verified_synthetic_material(
+    database: &CanonicalDatabase,
+) -> Result<SyntheticMaterial, OperationError> {
+    let _snapshot = database.begin_read()?;
+    let rows = read_canonical_rows(database)?;
+    rows.schema.policy.require_phase1()?;
+    academic_portability::verify::replay_signed_batches(database, &fixture_authorizations()?)?;
+    let mut reader = open_reader(database.path())?;
+    let history = academic_store::queries::signed_history_snapshot(&mut reader)?;
+    if history.accept_seq_head != rows.watermark.accept_seq_head {
+        return Err(OperationError::UnexpectedState(
+            "profile advanced during closure verification",
+        ));
+    }
+    let authorization = fixture_device_authorization()?;
+    let mut core = crate::Core::new();
+    for batch in history.batches {
+        core.accept_signed_batch(&batch.envelope, &authorization)?;
+    }
+    let mut entries: BTreeMap<PredicateId, AuthorityPolicy> = PHASE1_PREDICATE_POLICIES
+        .iter()
+        .map(|(predicate, policy)| Ok((PredicateId::parse(*predicate)?, *policy)))
+        .collect::<Result<_, academic_domain::DomainError>>()?;
+    for (predicate, policy) in [
+        (
+            crate::details::CORPUS_PREDICATE,
+            AuthorityPolicy::ImplementationObservation,
+        ),
+        (
+            crate::details::RELATION_PREDICATE,
+            AuthorityPolicy::ImplementationObservation,
+        ),
+        (
+            crate::details::DISPOSITION_PREDICATE,
+            AuthorityPolicy::UserOwned,
+        ),
+    ] {
+        entries.insert(PredicateId::parse(predicate)?, policy);
+    }
+    let mut descriptors = Vec::new();
+    let mut domains = BTreeSet::new();
+    for accepted in core.ledger().accepted_events() {
+        domains.insert(accepted.event.domain_id);
+        match &accepted.event.payload {
+            EventPayload::ArtifactRegistered(descriptor) => descriptors.push(descriptor.clone()),
+            EventPayload::ClaimAsserted(claim) if !entries.contains_key(&claim.predicate_id) => {
+                return Err(OperationError::UnexpectedState(
+                    "synthetic claim has no admitted predicate policy",
+                ));
+            }
+            _ => {}
+        }
+    }
+    let mut stored = academic_portability::verify::read_artifact_descriptors(database)?;
+    descriptors.sort_by_key(|value| value.id);
+    stored.sort_by_key(|value| value.id);
+    if descriptors != stored {
+        return Err(OperationError::UnexpectedState(
+            "artifact closure differs from signed history",
+        ));
+    }
+    Ok(SyntheticMaterial {
+        descriptors,
+        domains,
+        policies: PredicatePolicies::new("synthetic-detail-policies-v1", entries)?,
+        head: history.accept_seq_head,
+    })
+}
+
+impl SyntheticMaterial {
+    fn keyring(&self) -> Result<DomainKeyring, OperationError> {
+        let mut keyring = DomainKeyring::new();
+        for domain in &self.domains {
+            keyring.insert(*domain, FIXTURE_LOCATOR_KEY)?;
+        }
+        Ok(keyring)
+    }
+
+    fn targets(&self) -> Vec<ProjectionRebuildTarget> {
+        self.domains
+            .iter()
+            .flat_map(|domain| {
+                PHASE1_PROJECTION_KINDS
+                    .iter()
+                    .map(|kind| ProjectionRebuildTarget {
+                        kind: *kind,
+                        domain: *domain,
+                        coordinates: ProjectionCoordinates::new(
+                            self.head,
+                            PHASE1_PROJECTION_VALID_AT,
+                        ),
+                    })
+            })
+            .collect()
+    }
 }
 
 /// Returns the frozen policy registry, failing closed on an unlisted predicate.
@@ -612,7 +702,6 @@ pub fn diagnose_profile(
     profile_root: &Path,
     deep: bool,
 ) -> Result<ProfileDiagnosis, OperationError> {
-    let material = fixture_material()?;
     let database_path = profile_root.join(academic_store::STORE_DATABASE_FILE);
     // A directory that is not a profile is a refused location, not a fault. It
     // is checked here rather than being read out of SQLite's "unable to open
@@ -626,6 +715,7 @@ pub fn diagnose_profile(
     let database = CanonicalDatabase::open_source(&database_path)?;
     let rows = read_canonical_rows(&database)?;
     rows.schema.policy.require_phase1()?;
+    let material = verified_synthetic_material(&database)?;
 
     let mut findings = Vec::new();
     let marker = profile_root.join(SYNTHETIC_PROFILE_MARKER);
@@ -683,7 +773,10 @@ pub fn diagnose_profile(
             });
         }
 
-        let vault = Vault::open(profile_root, fixture_keyring(&material)?)?;
+        let vault = Vault::open(profile_root, material.keyring()?)?;
+        for descriptor in &material.descriptors {
+            let _ = vault.verify_sealed_object(descriptor)?;
+        }
         orphan_temp_entries = vault_entry_names(vault.layout().temp_dir(), VAULT_TEMP_EXTENSION)?;
         if !orphan_temp_entries.is_empty() {
             findings.push(Finding {
@@ -715,7 +808,7 @@ pub fn diagnose_profile(
             projection_builder_digest(),
             projection_config_hash(),
         )?;
-        for domain in fixture_domains(&material) {
+        for domain in material.domains {
             for kind in PHASE1_PROJECTION_KINDS {
                 let active = runner.active_generation(*kind, domain)?;
                 let source_outbox_seq = active.as_ref().map(|value| value.source_outbox_seq);
@@ -762,11 +855,14 @@ pub fn export_synthetic_profile(
     profile_root: &Path,
     destination: &Path,
 ) -> Result<ExportReceipt, OperationError> {
-    let material = fixture_material()?;
+    academic_store::profile::require_profile_format(profile_root)?;
+    let database =
+        CanonicalDatabase::open_source(&profile_root.join(academic_store::STORE_DATABASE_FILE))?;
+    let material = verified_synthetic_material(&database)?;
     Ok(export_profile(
         profile_root,
         destination,
-        fixture_keyring(&material)?,
+        material.keyring()?,
     )?)
 }
 
@@ -775,11 +871,14 @@ pub fn backup_synthetic_profile(
     profile_root: &Path,
     destination: &Path,
 ) -> Result<BackupReceipt, OperationError> {
-    let material = fixture_material()?;
+    academic_store::profile::require_profile_format(profile_root)?;
+    let database =
+        CanonicalDatabase::open_source(&profile_root.join(academic_store::STORE_DATABASE_FILE))?;
+    let material = verified_synthetic_material(&database)?;
     Ok(backup_profile(
         profile_root,
         destination,
-        fixture_keyring(&material)?,
+        material.keyring()?,
     )?)
 }
 
@@ -792,34 +891,32 @@ pub fn restore_synthetic_profile(
     backup_root: &Path,
     destination: &Path,
 ) -> Result<RestoreReceipt, OperationError> {
-    let material = fixture_material()?;
-    let manifest = academic_portability::manifest::BackupManifest::from_json_bytes(
-        &fs::read(backup_root.join(academic_portability::backup::MANIFEST_FILE)).map_err(
-            |error| {
-                io_error(
-                    "read backup manifest",
-                    &backup_root.join(academic_portability::backup::MANIFEST_FILE),
-                    error,
-                )
-            },
-        )?,
-    )?;
     let authorizations = fixture_authorizations()?;
-    let targets = projection_targets(manifest.semantic.watermark.accept_seq_head)?;
-    let policies = fixture_predicate_policies()?;
-    Ok(restore_profile(
+    Ok(restore_profile_with_material(
         backup_root,
         destination,
         &NativePathProbe::default(),
-        fixture_keyring(&material)?,
-        &RestorePlan {
-            authorizations: &authorizations,
-            projections: &targets,
-            predicate_policies: Some(&policies),
-            projection_builder_digest: projection_builder_digest(),
-            projection_config_hash: projection_config_hash(),
+        &authorizations,
+        |database| {
+            synthetic_restore_material(database).map_err(|error| PortabilityError::ReplayMismatch {
+                subject: "synthetic restore material",
+                detail: error.to_string(),
+            })
         },
     )?)
+}
+
+fn synthetic_restore_material(
+    database: &CanonicalDatabase,
+) -> Result<RestoreMaterial, OperationError> {
+    let material = verified_synthetic_material(database)?;
+    Ok(RestoreMaterial {
+        keyring: material.keyring()?,
+        projections: material.targets(),
+        predicate_policies: Some(material.policies),
+        projection_builder_digest: projection_builder_digest(),
+        projection_config_hash: projection_config_hash(),
+    })
 }
 
 #[cfg(test)]

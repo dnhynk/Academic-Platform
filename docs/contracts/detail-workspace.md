@@ -8,15 +8,36 @@ The normal service does not seed data or select a hard-coded product fixture.
 
 ## Source and authority boundary
 
-`academic-core::details::CorpusRecord` is a version-1 **imported snapshot** of the
+`academic-core::details::CorpusRecord` is a versioned **imported snapshot** of the
 closed detail DTO, entity aliases, canonical relation-claim IDs and optional
 lecture media artifact IDs. It is stored as a v4 `ClaimAsserted` with predicate
 `detail.workspace.corpus.v1`. Each displayed relation has a preceding accepted
-`detail.workspace.relation.v1` claim in the same domain/scope and an actual
-owning entity. Both claims require an Importer actor, `DIRECT_OBSERVATION` and
+`detail.workspace.relation.v1` claim in the same domain/scope and signed
+owning-entity membership. Both claims require an Importer actor, `DIRECT_OBSERVATION` and
 `CODE_OBSERVED`. Relation JSON must equal the signed snapshot; its displayed
 source bytes must match the first evidence excerpt digest. Evidence and
 artifact closure are verified by canonical replay and vault read-back.
+
+Corpus and relation eligibility uses the canonical resolver at the requested
+known/valid coordinates with the `ImplementationObservation` policy. Authorized
+retractions and supersessions, expiry, disputed state and equal-rank conflicts
+cannot be bypassed by a signed snapshot. A relation that is no longer eligible
+is omitted from every occurrence in the selected corpus and from current
+disposition overlays. Its original canonical ID and signed disposition remain
+available to receipt lookup and historical reads.
+
+Version 1 binds a relation claim's subject to an owning entity. Distinct values
+in that owner/scope/predicate slot are canonical conflicts; the compatibility
+reader cannot reinterpret their old subjects or grant current writes. Version 2
+retains the same JSON fields and predicate but assigns one subject per relation.
+It hashes the canonical JSON tuple `("academic.details.relation-subject.v2",
+domain_id, scope_id, workspace_entity_id, relation_alias)` and derives its UUIDv7
+entity with the existing `derived_id` function's `entity` label. The reader
+recomputes that subject and validates all owners through signed corpus membership
+and the complete entity map. Shared owners never choose the subject. The explicit
+fixture importer now identifies itself as version 2; the resolver-aware projector
+identifies itself as `academic.details.v2`. Existing signed v1 records and
+disposition IDs are retained unchanged.
 
 Titles, status/confidence labels, source locator labels and detail-specific
 text are imported metadata. A displayed `CONFIRMED` relation label is not a
@@ -51,6 +72,10 @@ to be null. Source digest covers accepted signed batch hashes known at the
 chosen watermark. A watermark inside a batch includes that original batch hash.
 Replay currently refuses histories above 4096 batches or 32 MiB of original
 signed envelopes; incremental projection beyond these bounds is future work.
+The store and prospective disposition path use one fixed count/byte budget.
+A new disposition envelope that would exceed either ceiling returns
+`HISTORY_BUDGET_EXCEEDED` before persistence; revision, history and receipts do
+not change. Matching prior requests are looked up before this new-write check.
 
 Decisions carry `relation_id`, `action` (`reject` or `undo`), `expected_revision`,
 `expected_profile_id`, selector, 16-byte request/client IDs and a 32-byte
@@ -79,10 +104,27 @@ Transport loss yields unavailable, never invented acceptance.
 The profile ID incorporates the validated host location, schema metadata and a
 synced 32-byte `detail-incarnation.v1` marker. The marker is nonsecret local
 correlation metadata, created without overwrite and opened without following
-links. Invalid existing markers fail closed. Reopen is stable; canonical
+links. Unix opens the retained descriptor with `NONBLOCK` before regular-file
+and 32-byte validation, then reads at most 33 bytes. Invalid existing markers
+fail closed. Reopen is stable; canonical
 backup/restore and fresh same-path profiles get a new marker. Relocation changes
 the profile ID. A filesystem clone containing local metadata at the identical
 path is not an authenticated recovery procedure.
+
+Doctor, deterministic export, backup and empty-target restore derive synthetic
+domain closure from signed history verified by the build's independent trust
+anchor. Keys and predicate policies come from the host's closed synthetic
+configuration. Backup-supplied signing keys never authorize a restore. Restored
+projections rebuild for the verified domains; an imported source without a
+materialized sidecar still reports its actual projection lag in deep doctor.
+The round trip preserves original signed envelopes, source artifacts, media
+bytes and dispositions, while issuing a new local incarnation.
+Restore derives its material from the staged database after integrity, metadata
+and signed-replay checks against caller-owned authorizations. The compatible
+`restore_profile` entry point and the new material-factory path share the same
+object closure, rebuild and atomic publication. Neither opens the published
+backup database; a material-factory refusal leaves it unchanged and publishes
+no destination.
 
 ## Bounded media and explicit fixture tool
 

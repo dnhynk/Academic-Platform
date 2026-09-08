@@ -9,7 +9,7 @@ use crate::{
 use academic_contracts::{DeviceAuthorization, VerifiedBatch, sign_batch, verify_signed_batch};
 use academic_domain::{
     Actor, AuthorityClass, Claim, ClaimId, ClaimObject, ContentDigest, DomainId, EntityId,
-    EpistemicStatus, Event, EventPayload, TimestampMillis, UnsignedBatch, ValidInterval,
+    EpistemicStatus, Event, EventPayload, ScopeId, TimestampMillis, UnsignedBatch, ValidInterval,
 };
 use academic_rpc::details::{
     self as dto, DetailAction, DetailCorpus, DetailDecisionRequest, DetailReply, DetailReplyState,
@@ -19,7 +19,7 @@ use academic_store::{
     accept::AcceptError,
     idempotency::{AcceptanceCommand, IdempotencyError},
     profile::SyntheticProfile,
-    queries::{QueryError, signed_history_snapshot},
+    queries::{QueryError, SignedHistoryBudget, signed_history_snapshot},
 };
 use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
@@ -31,7 +31,7 @@ use std::{
 pub const CORPUS_PREDICATE: &str = "detail.workspace.corpus.v1";
 pub const RELATION_PREDICATE: &str = "detail.workspace.relation.v1";
 pub const DISPOSITION_PREDICATE: &str = "detail.workspace.disposition.v1";
-pub const PROJECTOR_VERSION: &str = "academic.details.v1";
+pub const PROJECTOR_VERSION: &str = "academic.details.v2";
 
 #[cfg(any(test, feature = "synthetic-detail-fixtures"))]
 pub mod fixture;
@@ -98,6 +98,7 @@ struct History {
     batches: Vec<(VerifiedBatch, Vec<u8>)>,
     revision: u64,
     head: u64,
+    budget: SignedHistoryBudget,
 }
 #[derive(Clone)]
 struct BoundRelation {
@@ -195,6 +196,7 @@ impl DetailContext {
             batches,
             revision: snapshot.revision,
             head: snapshot.accept_seq_head,
+            budget: snapshot.budget,
         })
     }
 
@@ -222,8 +224,12 @@ impl DetailContext {
                 break;
             }
             source.extend_from_slice(batch.envelope_hash().as_bytes());
-            accepted_start += u64::try_from(batch.batch().events.len())
-                .map_err(|_| DetailError::Invalid("batch size overflow"))?;
+            accepted_start = accepted_start
+                .checked_add(
+                    u64::try_from(batch.batch().events.len())
+                        .map_err(|_| DetailError::Invalid("batch size overflow"))?,
+                )
+                .ok_or(DetailError::Invalid("acceptance sequence overflow"))?;
         }
         for event in history
             .core
@@ -234,11 +240,11 @@ impl DetailContext {
         {
             if let EventPayload::ClaimAsserted(claim) = &event.event.payload
                 && claim.predicate_id.as_str() == CORPUS_PREDICATE
-                && claim.valid_time.contains(valid_at)
+                && claim_is_active(history, claim, known, valid_at)
             {
                 require_import_claim(&event.event.actor, claim)?;
                 let record: CorpusRecord = decode_claim(claim)?;
-                if record.version != 1 {
+                if !matches!(record.version, 1 | 2) {
                     return Err(DetailError::Invalid("unsupported corpus version"));
                 }
                 record.corpus.validate()?;
@@ -255,7 +261,8 @@ impl DetailContext {
         let mut corpus = DetailCorpus::default();
         let mut relations = BTreeMap::new();
         let mut media = BTreeMap::new();
-        for ((domain, scope, _), (corpus_sequence, corpus_claim, record)) in records {
+        for ((domain, scope, _), (corpus_sequence, corpus_claim, mut record)) in records {
+            let mut active_aliases = BTreeSet::new();
             let aliases = record.corpus.relations()?;
             if aliases.len() != record.relations.len() {
                 return Err(DetailError::Invalid("relation bindings are incomplete"));
@@ -311,16 +318,32 @@ impl DetailContext {
                     return Err(DetailError::Invalid("not a relation claim"));
                 };
                 require_import_claim(&event.event.actor, claim)?;
+                let owners = record.corpus.relation_owners(alias);
+                let owner_binding = !owners.is_empty()
+                    && owners
+                        .iter()
+                        .all(|owner| record.entities.contains_key(*owner));
+                let subject_binding = match record.version {
+                    1 => owners
+                        .iter()
+                        .filter_map(|owner| record.entities.get(*owner))
+                        .any(|entity| *entity == claim.subject_entity_id),
+                    2 => {
+                        claim.subject_entity_id
+                            == relation_subject(
+                                domain,
+                                scope,
+                                corpus_claim.subject_entity_id,
+                                alias,
+                            )?
+                    }
+                    _ => false,
+                };
                 if event.event.domain_id != domain
                     || claim.scope_id != scope
                     || claim.predicate_id.as_str() != RELATION_PREDICATE
-                    || !claim.valid_time.contains(valid_at)
-                    || !record
-                        .corpus
-                        .relation_owners(alias)
-                        .iter()
-                        .filter_map(|alias| record.entities.get(*alias))
-                        .any(|e| *e == claim.subject_entity_id)
+                    || !owner_binding
+                    || !subject_binding
                     || decode_claim::<Relation>(claim)? != *relation
                 {
                     return Err(DetailError::Invalid(
@@ -347,6 +370,12 @@ impl DetailContext {
                 {
                     return Err(DetailError::Invalid("corpus evidence is absent"));
                 }
+                // Visibility comes from canonical lifecycle/authority resolution at the
+                // selected coordinates. The signed binding remains historical identity.
+                if !claim_is_active(history, claim, known, valid_at) {
+                    continue;
+                }
+                active_aliases.insert(alias.to_owned());
                 if relations
                     .insert(
                         alias.to_owned(),
@@ -362,6 +391,7 @@ impl DetailContext {
                     ));
                 }
             }
+            retain_active_relations(&mut record.corpus, &active_aliases);
             corpus.lectures.extend(record.corpus.lectures);
             corpus.concepts.extend(record.corpus.concepts);
             corpus.projects.extend(record.corpus.projects);
@@ -671,16 +701,28 @@ impl DetailContext {
             }],
         };
         let envelope = sign_batch(&batch, &self.signing_key)?;
+        if history.budget.with_envelope(envelope.len()).is_err() {
+            return reject("HISTORY_BUDGET_EXCEEDED");
+        }
         // Validate the resulting projection and its bounded receipt before durable acceptance.
         // This is a dry replay through the same canonical core, never an optimistic ACK.
         let mut preview = self.history(profile)?;
         let (verified, _) = preview
             .core
             .accept_signed_batch(&envelope, &self.authorization)?;
-        let original_decision = decision_receipt(&verified, preview.head + 1, request)?;
+        preview.budget = preview.budget.with_envelope(envelope.len())?;
+        preview.head = preview
+            .head
+            .checked_add(1)
+            .filter(|value| *value <= dto::MAX_SAFE_INTEGER)
+            .ok_or(DetailError::Invalid("acceptance sequence exhausted"))?;
+        preview.revision = preview
+            .revision
+            .checked_add(1)
+            .filter(|value| *value <= dto::MAX_SAFE_INTEGER)
+            .ok_or(DetailError::Invalid("revision exhausted"))?;
+        let original_decision = decision_receipt(&verified, preview.head, request)?;
         preview.batches.push((verified, envelope.clone()));
-        preview.head += 1;
-        preview.revision += 1;
         let mut response = reply(
             DetailReplyState::Accepted,
             "ACCEPTED",
@@ -758,6 +800,65 @@ impl DetailContext {
         response.validate()?;
         let _ = dto::encode(&response)?;
         Ok(response)
+    }
+}
+/// A v2 relation owns one canonical slot; all of its display owners are signed
+/// separately by the corpus membership and complete entity map.
+fn relation_subject(
+    domain: DomainId,
+    scope: ScopeId,
+    workspace: EntityId,
+    alias: &str,
+) -> Result<EntityId, DetailError> {
+    let binding = dto::encode(&(
+        "academic.details.relation-subject.v2",
+        domain,
+        scope,
+        workspace,
+        alias,
+    ))?;
+    derived_id(ContentDigest::sha256(&binding), "entity")
+}
+fn claim_is_active(history: &History, claim: &Claim, known: u64, valid: TimestampMillis) -> bool {
+    history
+        .core
+        .ledger()
+        .resolve(&academic_ledger::ResolutionQuery {
+            subject_entity_id: claim.subject_entity_id,
+            scope_id: claim.scope_id,
+            predicate_id: claim.predicate_id.clone(),
+            valid_at: valid,
+            known_at_accept_seq: known,
+            policy: academic_ledger::AuthorityPolicy::ImplementationObservation,
+        })
+        .active_claim_ids
+        .contains(&claim.id)
+}
+
+fn retain_active_relations(corpus: &mut DetailCorpus, active: &BTreeSet<String>) {
+    for groups in corpus
+        .lectures
+        .iter_mut()
+        .map(|v| &mut v.links)
+        .chain(corpus.concepts.iter_mut().map(|v| &mut v.relations))
+        .chain(corpus.projects.iter_mut().map(|v| &mut v.relations))
+    {
+        for relations in groups.values_mut() {
+            relations.retain(|relation| active.contains(&relation.id));
+        }
+    }
+    for question in &mut corpus.questions {
+        question
+            .evidence
+            .retain(|relation| active.contains(&relation.id));
+        for revision in &mut question.revisions {
+            revision
+                .concepts
+                .retain(|relation| active.contains(&relation.id));
+            revision
+                .resolution_evidence
+                .retain(|relation| active.contains(&relation.id));
+        }
     }
 }
 fn decision_receipt(
@@ -905,6 +1006,484 @@ mod tests {
     type TestResult = Result<(), Box<dyn std::error::Error>>;
 
     #[test]
+    fn independent_relation_expiry_keeps_original_receipt_and_historical_visibility() -> TestResult
+    {
+        let path = detail_test_root();
+        let profile = create_synthetic_profile(&path, &NativePathProbe::default(), [32; 32])?;
+        fixture::import_synthetic_corpus(&profile, corpus("expiry"))?;
+        let context = context(&profile)?;
+        let mut service = open_service(&profile)?;
+        let history = context.history(&profile)?;
+        let (corpus_claim, mut relation) = source_claims(&history)?;
+        let mut record: CorpusRecord = decode_claim(&corpus_claim)?;
+        relation.id = derived_id(ContentDigest::sha256(b"finite relation"), "claim")?;
+        relation.valid_time =
+            ValidInterval::new(TimestampMillis::new(0), Some(TimestampMillis::new(200)))?;
+        record
+            .relations
+            .insert("relation-expiry".to_owned(), relation.id);
+        append_source_revision(
+            &profile,
+            &mut service,
+            corpus_claim,
+            record,
+            Some(relation.clone()),
+            61,
+        )?;
+        let request = request(
+            context.profile_id(),
+            "relation-expiry",
+            2,
+            62,
+            DetailAction::Reject,
+        );
+        let accepted =
+            context.handle(&profile, &mut service, &request, TimestampMillis::new(199))?;
+        assert_eq!(accepted.state, DetailReplyState::Accepted);
+        let before = academic_store::queries::canonical_snapshot(&profile.open_reader()?)?;
+        let state = read(&context, &profile, &mut service, 200)?;
+        assert_eq!(state.corpus.concepts.len(), 1);
+        assert!(state.corpus.relations()?.is_empty());
+        assert!(state.decisions.is_empty());
+        let retry = context.handle(&profile, &mut service, &request, TimestampMillis::new(200))?;
+        assert_eq!(retry.receipt_id, accepted.receipt_id);
+        assert_eq!(retry.receipt_decision, accepted.receipt_decision);
+        assert_eq!(
+            retry
+                .receipt_decision
+                .as_ref()
+                .map(|value| value.relation_claim_id),
+            Some(relation.id)
+        );
+        let historical = context
+            .handle(
+                &profile,
+                &mut service,
+                &DetailRequest::DetailsRead {
+                    selector: DetailSelector {
+                        valid_at_ms: Some(199),
+                        known_at_accept_seq: Some(before.accept_seq_head),
+                        ..DetailSelector::default()
+                    },
+                },
+                TimestampMillis::new(250),
+            )?
+            .details
+            .ok_or("missing history")?;
+        assert_eq!(historical.corpus.relations()?.len(), 1);
+        assert_eq!(historical.decisions.len(), 1);
+        assert_eq!(
+            academic_store::queries::canonical_snapshot(&profile.open_reader()?)?,
+            before
+        );
+        drop(service);
+        drop(profile);
+        std::fs::remove_dir_all(path)?;
+        Ok(())
+    }
+
+    #[test]
+    fn canonical_relation_lifecycle_removes_write_authority_but_keeps_receipts() -> TestResult {
+        use academic_domain::{ClaimRelation, ClaimRelationKind};
+        for kind in [ClaimRelationKind::Retracts, ClaimRelationKind::Supersedes] {
+            let path = detail_test_root();
+            let profile = create_synthetic_profile(&path, &NativePathProbe::default(), [32; 32])?;
+            fixture::import_synthetic_corpus(&profile, corpus("lifecycle"))?;
+            let context = context(&profile)?;
+            let mut service = open_service(&profile)?;
+            let (_, original) = source_claims(&context.history(&profile)?)?;
+            let request = request(
+                context.profile_id(),
+                "relation-lifecycle",
+                1,
+                63,
+                DetailAction::Reject,
+            );
+            let accepted =
+                context.handle(&profile, &mut service, &request, TimestampMillis::new(100))?;
+            let previous = academic_store::queries::canonical_snapshot(&profile.open_reader()?)?;
+            let mut correcting = original.clone();
+            correcting.id = derived_id(ContentDigest::sha256(b"correcting relation"), "claim")?;
+            correcting.valid_time = ValidInterval::open_ended(TimestampMillis::new(200));
+            append_import_payloads(
+                &profile,
+                &mut service,
+                vec![
+                    EventPayload::ClaimAsserted(correcting.clone()),
+                    EventPayload::ClaimRelated(ClaimRelation {
+                        source_claim_id: correcting.id,
+                        target_claim_id: original.id,
+                        kind,
+                        scope_id: original.scope_id,
+                    }),
+                ],
+                64,
+            )?;
+            assert_eq!(
+                read(&context, &profile, &mut service, 199)?
+                    .corpus
+                    .relations()?
+                    .len(),
+                1
+            );
+            let history = context.history(&profile)?;
+            assert!(!claim_is_active(
+                &history,
+                &original,
+                history.head,
+                TimestampMillis::new(200)
+            ));
+            let state = read(&context, &profile, &mut service, 200)?;
+            assert!(state.corpus.relations()?.is_empty());
+            let before = academic_store::queries::canonical_snapshot(&profile.open_reader()?)?;
+            let new = super::tests::request(
+                context.profile_id(),
+                "relation-lifecycle",
+                state.revision,
+                65,
+                DetailAction::Reject,
+            );
+            let refused =
+                context.handle(&profile, &mut service, &new, TimestampMillis::new(200))?;
+            assert_eq!(refused.reason.as_deref(), Some("RELATION_NOT_FOUND"));
+            let retry =
+                context.handle(&profile, &mut service, &request, TimestampMillis::new(200))?;
+            assert_eq!(retry.receipt_id, accepted.receipt_id);
+            assert_eq!(retry.receipt_decision, accepted.receipt_decision);
+            assert_eq!(
+                academic_store::queries::canonical_snapshot(&profile.open_reader()?)?,
+                before
+            );
+            let historical = context
+                .handle(
+                    &profile,
+                    &mut service,
+                    &DetailRequest::DetailsRead {
+                        selector: DetailSelector {
+                            known_at_accept_seq: Some(previous.accept_seq_head),
+                            valid_at_ms: Some(200),
+                            ..DetailSelector::default()
+                        },
+                    },
+                    TimestampMillis::new(250),
+                )?
+                .details
+                .ok_or("missing history")?;
+            assert_eq!(historical.corpus.relations()?.len(), 1);
+            drop(service);
+            drop(profile);
+            std::fs::remove_dir_all(path)?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn prospective_budget_refusal_is_atomic_and_prior_retries_remain_confirmable() -> TestResult {
+        // Bounded summary cases exercise the admission branch without allocating bulk history.
+        assert!(
+            SignedHistoryBudget::from_totals(4095, 33_554_431)?
+                .with_envelope(1)
+                .is_ok()
+        );
+        assert!(
+            SignedHistoryBudget::from_totals(4096, 1)?
+                .with_envelope(1)
+                .is_err()
+        );
+        assert!(
+            SignedHistoryBudget::from_totals(1, 33_554_432)?
+                .with_envelope(1)
+                .is_err()
+        );
+        assert!(
+            SignedHistoryBudget::from_totals(1, 1)?
+                .with_envelope(usize::MAX)
+                .is_err()
+        );
+        let path = detail_test_root();
+        let profile = create_synthetic_profile(&path, &NativePathProbe::default(), [32; 32])?;
+        fixture::import_synthetic_corpus(&profile, corpus("budget"))?;
+        let context = context(&profile)?;
+        let mut service = open_service(&profile)?;
+        let request = request(
+            context.profile_id(),
+            "relation-budget",
+            1,
+            66,
+            DetailAction::Reject,
+        );
+        let accepted =
+            context.handle(&profile, &mut service, &request, TimestampMillis::new(100))?;
+        let before = academic_store::queries::canonical_snapshot(&profile.open_reader()?)?;
+        for budget in [
+            SignedHistoryBudget::from_totals(4096, 1)?,
+            SignedHistoryBudget::from_totals(1, 33_554_432)?,
+        ] {
+            let mut history = context.history(&profile)?;
+            history.budget = budget;
+            let DetailRequest::DetailsDecide { decision: original } = &request else {
+                return Err("not decision".into());
+            };
+            let retry = context.decide(
+                &profile,
+                &mut service,
+                &history,
+                original,
+                TimestampMillis::new(101),
+            )?;
+            assert_eq!(retry.receipt_decision, accepted.receipt_decision);
+            let DetailRequest::DetailsDecide { decision } = super::tests::request(
+                context.profile_id(),
+                "relation-budget",
+                history.revision,
+                67,
+                DetailAction::Undo,
+            ) else {
+                return Err("not decision".into());
+            };
+            let refusal = context.decide(
+                &profile,
+                &mut service,
+                &history,
+                &decision,
+                TimestampMillis::new(101),
+            )?;
+            assert_eq!(refusal.reason.as_deref(), Some("HISTORY_BUDGET_EXCEEDED"));
+            assert_eq!(refusal.state, DetailReplyState::Rejected);
+            assert_eq!(
+                academic_store::queries::canonical_snapshot(&profile.open_reader()?)?,
+                before
+            );
+        }
+        drop(service);
+        drop(profile);
+        std::fs::remove_dir_all(path)?;
+        Ok(())
+    }
+
+    fn source_claims(history: &History) -> Result<(Claim, Claim), DetailError> {
+        let find = |predicate| {
+            history
+                .core
+                .ledger()
+                .accepted_events()
+                .iter()
+                .find_map(|event| match &event.event.payload {
+                    EventPayload::ClaimAsserted(claim)
+                        if claim.predicate_id.as_str() == predicate =>
+                    {
+                        Some(claim.clone())
+                    }
+                    _ => None,
+                })
+                .ok_or(DetailError::Invalid("missing test claim"))
+        };
+        Ok((find(CORPUS_PREDICATE)?, find(RELATION_PREDICATE)?))
+    }
+
+    #[test]
+    fn detail_profile_doctor_export_backup_restore_preserve_signed_evidence_and_media() -> TestResult
+    {
+        let path = detail_test_root();
+        let backup = detail_test_root();
+        let export_a = detail_test_root();
+        let export_b = detail_test_root();
+        let profile = create_synthetic_profile(&path, &NativePathProbe::default(), [32; 32])?;
+        let mut source = corpus("portable");
+        source.lectures.push(Lecture {
+            id: "lecture-portable".to_owned(),
+            title: "Synthetic PCM".to_owned(),
+            segments: vec![],
+            paragraphs: vec![],
+            captures: vec![],
+            review: vec![],
+            links: BTreeMap::new(),
+            explanation: String::new(),
+        });
+        // A complete ordinary mono PCM WAV: eight silent 16-bit samples at 8 kHz.
+        let mut wav = b"RIFF".to_vec();
+        wav.extend_from_slice(&52_u32.to_le_bytes());
+        wav.extend_from_slice(b"WAVEfmt ");
+        wav.extend_from_slice(&16_u32.to_le_bytes());
+        wav.extend_from_slice(&1_u16.to_le_bytes());
+        wav.extend_from_slice(&1_u16.to_le_bytes());
+        wav.extend_from_slice(&8000_u32.to_le_bytes());
+        wav.extend_from_slice(&16000_u32.to_le_bytes());
+        wav.extend_from_slice(&2_u16.to_le_bytes());
+        wav.extend_from_slice(&16_u16.to_le_bytes());
+        wav.extend_from_slice(b"data");
+        wav.extend_from_slice(&16_u32.to_le_bytes());
+        wav.extend_from_slice(&[0; 16]);
+        fixture::import_synthetic_corpus_with_audio(
+            &profile,
+            source.clone(),
+            BTreeMap::from([("lecture-portable".to_owned(), wav.clone())]),
+        )?;
+        let context = context(&profile)?;
+        let mut service = open_service(&profile)?;
+        let request = request(
+            context.profile_id(),
+            "relation-portable",
+            1,
+            68,
+            DetailAction::Reject,
+        );
+        let accepted =
+            context.handle(&profile, &mut service, &request, TimestampMillis::new(100))?;
+        let before = signed_history_snapshot(&mut profile.open_reader()?)?;
+        let original_id = context.profile_id().to_owned();
+        drop(service);
+        let doctor = crate::operations::diagnose_profile(&path, true)?;
+        assert_eq!(doctor.integrity_check, Some(true));
+        assert_eq!(doctor.foreign_key_check, Some(true));
+        assert_eq!(doctor.canonical.artifacts, 3);
+        assert!(
+            doctor
+                .findings
+                .iter()
+                .all(|finding| finding.code == "PROJECTION_LAG")
+        );
+        // Source imports have no materialized sidecar yet; doctor must report that real lag.
+        let first = crate::operations::export_synthetic_profile(&path, &export_a)?;
+        let second = crate::operations::export_synthetic_profile(&path, &export_b)?;
+        assert_eq!(first.manifest.semantic, second.manifest.semantic);
+        for object in &first.manifest.semantic.objects {
+            let bytes = std::fs::read(first.destination.join(&object.path))?;
+            if object.byte_length == u64::try_from(wav.len())? {
+                assert_eq!(bytes, wav);
+            }
+        }
+        let saved = crate::operations::backup_synthetic_profile(&path, &backup)?;
+        assert_eq!(saved.manifest.semantic.counts.batches, 2);
+        assert_eq!(saved.manifest.semantic.objects.len(), 3);
+        let verified_backup = academic_portability::backup::verify_backup_directory(&backup)?;
+        let failed_destination = detail_test_root();
+        let factory_called = std::cell::Cell::new(false);
+        let refused = academic_portability::restore::restore_profile_with_material(
+            &backup,
+            &failed_destination,
+            &NativePathProbe::default(),
+            &crate::operations::fixture_authorizations()?,
+            |database| {
+                assert!(!database.path().starts_with(&backup));
+                assert_eq!(
+                    academic_portability::verify::read_canonical_rows(database)?
+                        .counts
+                        .batches,
+                    2
+                );
+                factory_called.set(true);
+                Err(
+                    academic_portability::PortabilityError::DatabaseCheckFailed {
+                        check: "ordinary material factory refusal",
+                        detail: "synthetic material is unavailable".to_owned(),
+                    },
+                )
+            },
+        );
+        assert!(factory_called.get());
+        assert!(matches!(
+            refused,
+            Err(
+                academic_portability::PortabilityError::DatabaseCheckFailed {
+                    check: "ordinary material factory refusal",
+                    ..
+                }
+            )
+        ));
+        assert!(!failed_destination.exists());
+        // This rechecks every source path and digest, including refusal of any backup sidecar.
+        assert_eq!(
+            academic_portability::backup::verify_backup_directory(&backup)?,
+            verified_backup
+        );
+        let unpublished =
+            academic_portability::restore::find_unpublished_restores(&failed_destination)?;
+        assert_eq!(unpublished.len(), 1);
+        for staging in unpublished {
+            academic_portability::restore::remove_unpublished_restore(
+                &failed_destination,
+                &staging,
+            )?;
+        }
+        drop(profile);
+        std::fs::remove_dir_all(&path)?;
+        let restored_receipt = crate::operations::restore_synthetic_profile(&backup, &path)?;
+        assert_eq!(restored_receipt.replay.verified_batches, 2);
+        assert_eq!(restored_receipt.projections.len(), 3);
+        assert_eq!(
+            academic_portability::backup::verify_backup_directory(&backup)?,
+            verified_backup
+        );
+        let restored = open_synthetic_profile(&path, &NativePathProbe::default())?;
+        let after = signed_history_snapshot(&mut restored.open_reader()?)?;
+        assert_eq!(after.revision, before.revision);
+        assert_eq!(after.accept_seq_head, before.accept_seq_head);
+        assert_eq!(after.batches.len(), before.batches.len());
+        for (left, right) in before.batches.iter().zip(&after.batches) {
+            assert_eq!(left.envelope, right.envelope);
+            assert_eq!(left.accept_seq_start, right.accept_seq_start);
+            assert_eq!(left.accept_seq_end, right.accept_seq_end);
+        }
+        let restored_context = super::tests::context(&restored)?;
+        assert_ne!(restored_context.profile_id(), original_id);
+        assert_eq!(
+            super::tests::context(&restored)?.profile_id(),
+            restored_context.profile_id()
+        );
+        let mut service = open_service(&restored)?;
+        let state = read(&restored_context, &restored, &mut service, 200)?;
+        assert_eq!(state.corpus, source);
+        assert_eq!(state.decisions.len(), 1);
+        assert_eq!(
+            state.decisions[0].sequence,
+            accepted.decision_sequence.ok_or("missing receipt")?
+        );
+        let audio = restored_context
+            .handle(
+                &restored,
+                &mut service,
+                &DetailRequest::DetailsAudio {
+                    audio: DetailAudioRequest {
+                        lecture_id: "lecture-portable".to_owned(),
+                        expected_profile_id: restored_context.profile_id().to_owned(),
+                        expected_revision: after.revision,
+                        selector: DetailSelector::default(),
+                        offset: 0,
+                        length: 4096,
+                    },
+                },
+                TimestampMillis::new(200),
+            )?
+            .audio
+            .ok_or("missing media")?;
+        assert_eq!(audio.bytes, wav);
+        assert_eq!(
+            restored_context
+                .handle(&restored, &mut service, &request, TimestampMillis::new(200))?
+                .reason
+                .as_deref(),
+            Some("PROFILE_MISMATCH")
+        );
+        drop(service);
+        assert!(
+            crate::operations::diagnose_profile(&path, true)?
+                .findings
+                .is_empty()
+        );
+        let (local, _) = crate::local_service::LocalService::open(
+            restored.clone(),
+            std::time::SystemTime::now(),
+        )?;
+        drop(local);
+        drop(restored);
+        for root in [path, backup, export_a, export_b] {
+            std::fs::remove_dir_all(root)?;
+        }
+        Ok(())
+    }
+
+    #[test]
     fn distinct_relations_can_share_exact_source_bytes() -> TestResult {
         let path = detail_test_root();
         let profile = create_synthetic_profile(&path, &NativePathProbe::default(), [32; 32])?;
@@ -916,6 +1495,9 @@ mod tests {
         let mut second = relations[0].clone();
         second.id = "relation-alpha-second".to_owned();
         relations.push(second);
+        let mut shared_owner = source.concepts[0].clone();
+        shared_owner.id = "concept-other-owner".to_owned();
+        source.concepts.push(shared_owner);
         fixture::import_synthetic_corpus(&profile, source.clone())?;
         let context = context(&profile)?;
         let mut service = open_service(&profile)?;
@@ -927,6 +1509,182 @@ mod tests {
         drop(service);
         drop(profile);
         std::fs::remove_dir_all(path)?;
+        Ok(())
+    }
+
+    #[test]
+    fn legacy_owner_slot_conflict_cannot_grant_writes_or_erase_an_original_receipt() -> TestResult {
+        let path = detail_test_root();
+        let profile = create_synthetic_profile(&path, &NativePathProbe::default(), [32; 32])?;
+        fixture::import_synthetic_corpus(&profile, corpus("legacy"))?;
+        let context = context(&profile)?;
+        let mut service = open_service(&profile)?;
+        let (corpus_claim, mut legacy) = source_claims(&context.history(&profile)?)?;
+        let mut record: CorpusRecord = decode_claim(&corpus_claim)?;
+        record.version = 1;
+        legacy.id = derived_id(ContentDigest::sha256(b"legacy relation"), "claim")?;
+        legacy.subject_entity_id = *record
+            .entities
+            .get("concept-legacy")
+            .ok_or("missing owner")?;
+        record
+            .relations
+            .insert("relation-legacy".to_owned(), legacy.id);
+        append_source_revision(
+            &profile,
+            &mut service,
+            corpus_claim,
+            record,
+            Some(legacy.clone()),
+            71,
+        )?;
+        let request = request(
+            context.profile_id(),
+            "relation-legacy",
+            2,
+            72,
+            DetailAction::Reject,
+        );
+        let accepted =
+            context.handle(&profile, &mut service, &request, TimestampMillis::new(100))?;
+        assert_eq!(accepted.state, DetailReplyState::Accepted);
+        let before_conflict = context.history(&profile)?;
+        let mut conflicting = legacy.clone();
+        conflicting.id = derived_id(ContentDigest::sha256(b"legacy conflict"), "claim")?;
+        let mut relation: Relation = decode_claim(&conflicting)?;
+        relation.id = "relation-second-legacy".to_owned();
+        conflicting.object = ClaimObject::Text(String::from_utf8(dto::encode(&relation)?)?);
+        append_import_payloads(
+            &profile,
+            &mut service,
+            vec![EventPayload::ClaimAsserted(conflicting)],
+            73,
+        )?;
+        let state = read(&context, &profile, &mut service, 200)?;
+        assert!(state.corpus.relations()?.is_empty());
+        assert!(state.decisions.is_empty());
+        let before = academic_store::queries::canonical_snapshot(&profile.open_reader()?)?;
+        let new = super::tests::request(
+            context.profile_id(),
+            "relation-legacy",
+            state.revision,
+            74,
+            DetailAction::Reject,
+        );
+        assert_eq!(
+            context
+                .handle(&profile, &mut service, &new, TimestampMillis::new(200))?
+                .reason
+                .as_deref(),
+            Some("RELATION_NOT_FOUND")
+        );
+        let retry = context.handle(&profile, &mut service, &request, TimestampMillis::new(200))?;
+        assert_eq!(retry.receipt_decision, accepted.receipt_decision);
+        assert_eq!(retry.receipt_id, accepted.receipt_id);
+        assert_eq!(
+            academic_store::queries::canonical_snapshot(&profile.open_reader()?)?,
+            before
+        );
+        let historical = context
+            .handle(
+                &profile,
+                &mut service,
+                &DetailRequest::DetailsRead {
+                    selector: DetailSelector {
+                        known_at_accept_seq: Some(before_conflict.head),
+                        valid_at_ms: Some(200),
+                        ..DetailSelector::default()
+                    },
+                },
+                TimestampMillis::new(250),
+            )?
+            .details
+            .ok_or("missing history")?;
+        assert_eq!(historical.corpus.relations()?.len(), 1);
+        assert_eq!(historical.decisions.len(), 1);
+        drop(service);
+        drop(profile);
+        std::fs::remove_dir_all(path)?;
+        Ok(())
+    }
+
+    #[test]
+    fn corpus_lifecycle_and_conflicts_obey_canonical_selection_at_both_coordinates() -> TestResult {
+        use academic_domain::ClaimRelationKind;
+        for kind in [
+            Some(ClaimRelationKind::Retracts),
+            Some(ClaimRelationKind::Supersedes),
+            None,
+        ] {
+            let path = detail_test_root();
+            let profile = create_synthetic_profile(&path, &NativePathProbe::default(), [32; 32])?;
+            fixture::import_synthetic_corpus(&profile, corpus("corpus-lifecycle"))?;
+            let context = context(&profile)?;
+            let mut service = open_service(&profile)?;
+            let request = request(
+                context.profile_id(),
+                "relation-corpus-lifecycle",
+                1,
+                75,
+                DetailAction::Reject,
+            );
+            let accepted =
+                context.handle(&profile, &mut service, &request, TimestampMillis::new(100))?;
+            let before = context.history(&profile)?;
+            let (mut original, _) = source_claims(&before)?;
+            original.valid_time = ValidInterval::open_ended(TimestampMillis::new(200));
+            append_source_revision_with_kind(
+                &profile,
+                &mut service,
+                original,
+                CorpusRecord {
+                    version: 2,
+                    corpus: DetailCorpus::default(),
+                    relations: BTreeMap::new(),
+                    entities: BTreeMap::new(),
+                    media: BTreeMap::new(),
+                },
+                None,
+                76,
+                kind,
+            )?;
+            assert_eq!(
+                read(&context, &profile, &mut service, 199)?
+                    .corpus
+                    .relations()?
+                    .len(),
+                1
+            );
+            assert!(
+                read(&context, &profile, &mut service, 200)?
+                    .corpus
+                    .concepts
+                    .is_empty()
+            );
+            let retry =
+                context.handle(&profile, &mut service, &request, TimestampMillis::new(200))?;
+            assert_eq!(retry.receipt_decision, accepted.receipt_decision);
+            assert_eq!(retry.receipt_id, accepted.receipt_id);
+            let historical = context
+                .handle(
+                    &profile,
+                    &mut service,
+                    &DetailRequest::DetailsRead {
+                        selector: DetailSelector {
+                            known_at_accept_seq: Some(before.head),
+                            valid_at_ms: Some(200),
+                            ..DetailSelector::default()
+                        },
+                    },
+                    TimestampMillis::new(250),
+                )?
+                .details
+                .ok_or("missing history")?;
+            assert_eq!(historical.corpus.relations()?.len(), 1);
+            drop(service);
+            drop(profile);
+            std::fs::remove_dir_all(path)?;
+        }
         Ok(())
     }
 
@@ -1072,23 +1830,61 @@ mod tests {
     fn append_source_revision(
         profile: &SyntheticProfile,
         service: &mut AcceptanceService,
+        corpus_claim: Claim,
+        record: CorpusRecord,
+        relation: Option<Claim>,
+        seed: u8,
+    ) -> TestResult {
+        append_source_revision_with_kind(
+            profile,
+            service,
+            corpus_claim,
+            record,
+            relation,
+            seed,
+            Some(academic_domain::ClaimRelationKind::Supersedes),
+        )
+    }
+
+    fn append_source_revision_with_kind(
+        profile: &SyntheticProfile,
+        service: &mut AcceptanceService,
         mut corpus_claim: Claim,
         record: CorpusRecord,
         relation: Option<Claim>,
         seed: u8,
+        kind: Option<academic_domain::ClaimRelationKind>,
     ) -> TestResult {
         use academic_domain::{
             ArtifactRepresentation, Confidentiality, EvidenceItem, EvidenceLocator, EvidenceRole,
             EvidenceStrength, MediaType, RetentionClass,
         };
         let history = context(profile)?.history(profile)?;
-        let previous = history
+        let domain = history
             .batches
             .last()
             .ok_or("missing source history")?
             .0
-            .clone();
-        let domain = previous.batch().events[0].domain_id;
+            .batch()
+            .events[0]
+            .domain_id;
+        let prior_corpus = history
+            .core
+            .ledger()
+            .accepted_events()
+            .iter()
+            .rev()
+            .find_map(|event| match &event.event.payload {
+                EventPayload::ClaimAsserted(claim)
+                    if claim.predicate_id == corpus_claim.predicate_id
+                        && claim.subject_entity_id == corpus_claim.subject_entity_id
+                        && claim.scope_id == corpus_claim.scope_id =>
+                {
+                    Some(claim.id)
+                }
+                _ => None,
+            })
+            .ok_or("missing preceding corpus")?;
         let digest = ContentDigest::sha256(&[seed]);
         let bytes = dto::encode(&record)?;
         let request = academic_vault::ArtifactIngestRequest::new(
@@ -1135,7 +1931,28 @@ mod tests {
         if let Some(relation) = relation {
             payloads.push(EventPayload::ClaimAsserted(relation));
         }
-        payloads.push(EventPayload::ClaimAsserted(corpus_claim));
+        payloads.push(EventPayload::ClaimAsserted(corpus_claim.clone()));
+        if let Some(kind) = kind {
+            payloads.push(EventPayload::ClaimRelated(academic_domain::ClaimRelation {
+                source_claim_id: corpus_claim.id,
+                target_claim_id: prior_corpus,
+                scope_id: corpus_claim.scope_id,
+                kind,
+            }));
+        }
+        append_import_payloads(profile, service, payloads, seed)
+    }
+
+    fn append_import_payloads(
+        profile: &SyntheticProfile,
+        service: &mut AcceptanceService,
+        payloads: Vec<EventPayload>,
+        seed: u8,
+    ) -> TestResult {
+        let history = context(profile)?.history(profile)?;
+        let previous = &history.batches.last().ok_or("missing source history")?.0;
+        let domain = previous.batch().events[0].domain_id;
+        let digest = ContentDigest::sha256(&[seed]);
         let start = previous.batch().origin_seq_end + 1;
         let mut events = Vec::new();
         for (index, payload) in payloads.into_iter().enumerate() {

@@ -88,4 +88,18 @@ buffers are content and their Debug implementations redact payloads. The
 transcript DTO uses the specific Rust name `DetailSegment` and redacts raw and
 corrected text. Existing source scanners and discovery floors remain unchanged.
 
+The review correction introduces imported source record version 2 with the same
+JSON fields, existing predicate and unchanged local RPC shape. Its per-relation
+subject binds the signed workspace/domain/scope/alias tuple; the reader retains
+strict canonical resolution for both source versions, and the explicit importer
+reports version 2. `academic.details.v2` identifies the corrected projection.
+Historical signed source bytes and disposition identities are never upcast into
+new subjects or rewritten. The fixed signed-history budget is shared between
+store reads and prospective acceptance; a refused new write creates no receipt.
+Exact core/store/platform/portability item inventories are regenerated with the
+unchanged repository resolver/lexer for these additions and the staged restore
+material factory. Their cardinality pin rises by 23 items; discovery rules,
+binary-reference permissions, dependency admission and historical goldens do
+not change.
+
 Kotlin and Swift golden decoding; general Protobuf unknown-field preservation rules; N-1 client compatibility; length-prefixed IPC framing; decompression/size/depth limits; malformed and fuzz corpus; and generated bindings for all payload types. Signed deterministic-CBOR authenticated-field discard is already fail-closed. Phase 0 executes Rust actor/relation wire round trips plus declarative schema drift checks.

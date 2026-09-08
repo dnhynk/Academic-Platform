@@ -13,11 +13,15 @@ pub(crate) fn read_detail_incarnation(root: &std::path::Path) -> std::io::Result
     let descriptor = rustix::fs::openat(
         &directory,
         "detail-incarnation.v1",
-        rustix::fs::OFlags::RDONLY | rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::CLOEXEC,
+        rustix::fs::OFlags::RDONLY
+            | rustix::fs::OFlags::NONBLOCK
+            | rustix::fs::OFlags::NOFOLLOW
+            | rustix::fs::OFlags::CLOEXEC,
         rustix::fs::Mode::empty(),
     )?;
     let file = std::fs::File::from(descriptor);
-    if !file.metadata()?.is_file() || file.metadata()?.len() != 32 {
+    let metadata = file.metadata()?;
+    if !metadata.is_file() || metadata.len() != 32 {
         return Err(std::io::Error::other("invalid detail incarnation file"));
     }
     let mut bytes = Vec::new();

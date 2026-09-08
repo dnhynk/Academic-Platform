@@ -69,7 +69,40 @@ pub struct StoredBatchMaterial {
 pub struct SignedHistorySnapshot {
     pub revision: u64,
     pub accept_seq_head: u64,
+    pub budget: SignedHistoryBudget,
     pub batches: Vec<SignedHistoryBatch>,
+}
+/// The detail bridge's fixed replay budget, shared by reads and prospective writes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SignedHistoryBudget {
+    count: u64,
+    bytes: u64,
+}
+impl SignedHistoryBudget {
+    pub fn from_totals(count: u64, bytes: u64) -> Result<Self, QueryError> {
+        if count > 4096 || bytes > 33_554_432 {
+            return Err(QueryError::Corrupt(
+                "signed history exceeds bounded detail replay",
+            ));
+        }
+        Ok(Self { count, bytes })
+    }
+
+    /// Checks the complete next envelope before any durable acceptance occurs.
+    pub fn with_envelope(self, length: usize) -> Result<Self, QueryError> {
+        let count = self
+            .count
+            .checked_add(1)
+            .ok_or(QueryError::Corrupt("history count overflow"))?;
+        let bytes = self
+            .bytes
+            .checked_add(
+                u64::try_from(length)
+                    .map_err(|_| QueryError::Corrupt("history length overflow"))?,
+            )
+            .ok_or(QueryError::Corrupt("history bytes overflow"))?;
+        Self::from_totals(count, bytes)
+    }
 }
 pub struct SignedHistoryBatch {
     pub envelope: Vec<u8>,
@@ -94,11 +127,10 @@ pub fn signed_history_snapshot(
         "SELECT profile_revision, next_accept_seq - 1, (SELECT count(*) FROM ledger_batch), (SELECT coalesce(sum(length(signed_envelope)), 0) FROM ledger_batch) FROM replica_state WHERE singleton = 1",
         [], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
     ).map_err(StoreError::from)?;
-    if count > 4096 || bytes > 33_554_432 {
-        return Err(QueryError::Corrupt(
-            "signed history exceeds bounded detail replay",
-        ));
-    }
+    let budget = SignedHistoryBudget::from_totals(
+        nonnegative_u64(count, "history count")?,
+        nonnegative_u64(bytes, "history bytes")?,
+    )?;
     let batches = {
         let mut statement = transaction.prepare("SELECT signed_envelope, accept_seq_start, accept_seq_end FROM ledger_batch ORDER BY accept_seq_start").map_err(StoreError::from)?;
         let rows = statement
@@ -125,6 +157,7 @@ pub fn signed_history_snapshot(
     Ok(SignedHistorySnapshot {
         revision: nonnegative_u64(revision, "history revision")?,
         accept_seq_head: nonnegative_u64(head, "history head")?,
+        budget,
         batches,
     })
 }

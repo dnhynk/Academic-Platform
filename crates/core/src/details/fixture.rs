@@ -4,6 +4,7 @@
 use crate::{
     details::{
         CORPUS_PREDICATE, CorpusRecord, DetailContext, DetailError, RELATION_PREDICATE, derived_id,
+        relation_subject,
     },
     service::AcceptanceService,
 };
@@ -39,6 +40,7 @@ pub fn import_synthetic_corpus_with_audio(
     let namespace = ContentDigest::sha256(&canonical);
     let domain = derived_id(namespace, "domain")?;
     let scope = derived_id(namespace, "scope")?;
+    let workspace = derived_id(namespace, "workspace")?;
     let authorization = crate::fixture_device_authorization()?;
     let mut keyring = DomainKeyring::new();
     keyring.insert(domain, crate::local_service::FIXTURE_LOCATOR_KEY)?;
@@ -77,16 +79,13 @@ pub fn import_synthetic_corpus_with_audio(
         )?;
         let id = derived_id(namespace, &format!("claim-{alias}"))?;
         relations.insert(alias.to_owned(), id);
-        let owner = corpus
-            .relation_owners(alias)
-            .into_iter()
-            .next()
-            .and_then(|alias| entities.get(alias))
-            .copied()
-            .ok_or(DetailError::Invalid("relation without owner"))?;
+        let owners = corpus.relation_owners(alias);
+        if owners.is_empty() || !owners.iter().all(|owner| entities.contains_key(*owner)) {
+            return Err(DetailError::Invalid("relation without explicit owners"));
+        }
         payloads.push(EventPayload::ClaimAsserted(Claim {
             id,
-            subject_entity_id: owner,
+            subject_entity_id: relation_subject(domain, scope, workspace, alias)?,
             predicate_id: PredicateId::parse(RELATION_PREDICATE)?,
             object: ClaimObject::Text(
                 String::from_utf8(dto::encode(relation)?)
@@ -132,7 +131,7 @@ pub fn import_synthetic_corpus_with_audio(
         register_once(&mut payloads, receipt.descriptor().clone())?;
     }
     let record = CorpusRecord {
-        version: 1,
+        version: 2,
         corpus,
         relations,
         entities,
@@ -142,7 +141,7 @@ pub fn import_synthetic_corpus_with_audio(
     let evidence = seal_source(&service, namespace, "corpus", &record_bytes, &mut payloads)?;
     payloads.push(EventPayload::ClaimAsserted(Claim {
         id: derived_id(namespace, "corpus-claim")?,
-        subject_entity_id: derived_id(namespace, "workspace")?,
+        subject_entity_id: workspace,
         predicate_id: PredicateId::parse(CORPUS_PREDICATE)?,
         object: ClaimObject::Text(
             String::from_utf8(record_bytes).map_err(|_| DetailError::Invalid("corpus UTF-8"))?,
@@ -165,7 +164,7 @@ pub fn import_synthetic_corpus_with_audio(
             origin_observed_at: TimestampMillis::new(0),
             actor: Actor::Importer {
                 name: "academic.synthetic-detail-fixture".to_owned(),
-                version: "1".to_owned(),
+                version: "2".to_owned(),
             },
             domain_id: domain,
             payload,

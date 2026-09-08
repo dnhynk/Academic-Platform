@@ -154,4 +154,25 @@ resolver reads canonical author provenance for prediction removal ownership.
 
 ## Acceptance gate
 
+The plaintext synthetic detail profile uses the existing doctor/export/backup/
+restore entry points with domain closure derived from independently verified
+signed history. Its three detail predicates have explicit host-owned policies;
+neither a manifest nor an envelope-carried public key creates a trust anchor.
+Source/media artifacts and original signed disposition envelopes survive an
+empty-target restore exactly, disposable projections rebuild for the verified
+domains, and local detail incarnation metadata is newly created. This extends
+ordinary synthetic portability coverage and changes no real-data admission or
+encrypted-backup acceptance gate.
+
+The additive `restore_profile_with_material` seam invokes a host material factory
+only on the staged database after integrity, metadata and signed replay succeed
+against the caller's independent authorizations. The factory can supply locator
+keys, explicit predicate policies and projection targets, but cannot select the
+trust anchors or skip any verification/publication stage. `restore_profile`
+remains compatible through the same implementation. Opening a published SQLite
+backup merely to inspect domains can create WAL/SHM sidecars even on a read-only
+connection, so material derivation occurs on the staged copy. Ordinary success
+and factory-refusal tests recheck the backup's complete inventory and digests;
+refusal leaves an incomplete staging tree and no published destination.
+
 Fixture for each supported schema version; interrupted large migration resume; restore only to empty destination; object/ledger/key closure; independent fresh-profile restore; and vendor-neutral export/import round trip.
