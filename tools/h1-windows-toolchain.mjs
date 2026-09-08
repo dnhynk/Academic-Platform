@@ -1,10 +1,11 @@
 // The existing verifier fixes a user-machine D: install root. Hosted Windows
 // ARM uses a C: workspace; retain every byte/identity pin in a job-local root.
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { readFileSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { delimiter, isAbsolute, join, relative, resolve } from "node:path";
+import { measuredBytes, validateWindowsObservation } from "./h1-correspondence.mjs";
+import { PERL_IDENTITY_ARGS, PERL_MODULE_ARGS } from "./h1-plan.mjs";
 
 assert.equal(process.platform, "win32");
 assert(process.env.RUNNER_TEMP);
@@ -12,11 +13,27 @@ const pin = JSON.parse(readFileSync("tools/sqlcipher/windows-toolchain.json", "u
 const interpreter = join(process.env.RUNNER_TEMP, "h1-perl", pin.perl_relative_path);
 assert.equal(resolve(process.env.OPENSSL_SRC_PERL).toLowerCase(), resolve(interpreter).toLowerCase());
 const archive = join(process.env.RUNNER_TEMP, "h1-perl-download", pin.archive.name);
-assert.equal(statSync(archive).size, pin.archive.size_bytes);
-assert.equal(createHash("sha256").update(readFileSync(archive)).digest("hex"), pin.archive.sha256);
-const identity = spawnSync(interpreter, ["-e", "print $^V, qq(\\n), $Config::Config{archname}, qq(\\n)", "-MConfig"], { encoding: "utf8", windowsHide: true });
-assert.equal(identity.status, 0, identity.stderr);
-assert.deepEqual(identity.stdout.trim().split(/\r?\n/u), [pin.perl_version_string, pin.perl_archname]);
-const modules = spawnSync(interpreter, ["-e", "use Locale::Maketext::Simple; use Params::Check; use IPC::Cmd; use Pod::Usage; print qq(ok\\n)"], { encoding: "utf8", windowsHide: true });
-assert.equal(modules.status, 0, modules.stderr);
-console.log(JSON.stringify({ component: pin.component, version: pin.version, archive: pin.archive, interpreter, identity: identity.stdout.trim().split(/\r?\n/u), modules: "verified", pathAdded: false, productArchitectureClaim: false }));
+const archiveObservation = { path: archive, ...measuredBytes(archive) };
+assert.equal(archiveObservation.bytes, pin.archive.size_bytes);
+assert.equal(archiveObservation.sha256, pin.archive.sha256);
+const invoke = (args) => {
+  const result = spawnSync(interpreter, args, { encoding: "utf8", windowsHide: true });
+  return { executable: interpreter, args, exitCode: result.status, signal: result.signal, error: result.error?.message ?? null, stdout: result.stdout, stderr: result.stderr };
+};
+const installRoot = join(process.env.RUNNER_TEMP, "h1-perl");
+// Retain only entries inside this admitted tool's root, never the ambient PATH.
+const entriesWithinInstallRoot = (process.env.PATH || "").split(delimiter).filter((entry) => {
+  const suffix = relative(installRoot, resolve(entry.replace(/^"|"$/gu, "")));
+  return !suffix || (!suffix.startsWith("..") && !isAbsolute(suffix));
+});
+const observation = {
+  component: pin.component, version: pin.version, archive: pin.archive,
+  archiveObservation,
+  interpreter, interpreterObservation: measuredBytes(interpreter),
+  identity: invoke(PERL_IDENTITY_ARGS), modules: invoke(PERL_MODULE_ARGS),
+  pathPolicy: { installRoot, entriesWithinInstallRoot, pathAdded: false, referencedOnlyBy: "OPENSSL_SRC_PERL" },
+  opensslRustUseNasm: process.env.OPENSSL_RUST_USE_NASM ?? null, productArchitectureClaim: false,
+};
+// Failed observations remain raw stdout plus a nonzero command result.
+console.log(JSON.stringify(observation));
+validateWindowsObservation(observation, { runnerTemp: process.env.RUNNER_TEMP, opensslSrcPerl: process.env.OPENSSL_SRC_PERL, opensslRustUseNasm: process.env.OPENSSL_RUST_USE_NASM }, pin, "windows-x86_64");

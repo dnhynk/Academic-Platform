@@ -1,4 +1,4 @@
-# Unsigned H1 preparation evidence, version 1
+# Unsigned H1 preparation evidence, version 2
 
 `tools/h1-evidence.mjs` collects and validates **synthetic component evidence**.
 It cannot create, sign or accept an admission receipt. `acceptedH1` and
@@ -24,15 +24,58 @@ native licence bytes, command records and separate raw stdout/stderr logs.
 The schema-2 probe binary is retained with its file size/hash; its synthetic
 profile, wrapped recipient and DB/WAL/SHM/backup/crash scan files are retained.
 Cargo's JSON compiler-artifact output binds the retained encrypted profile,
-backup and crash test executables to their command records in `binaries.json`;
-all four retained executable types have native architecture and byte hashes.
+backup and crash test executables and the `probe-build` executable to their
+command records in `binaries.json`. Each eligible compiler record has exactly
+one retained path and one command/target/executable identity. The selected test
+targets are `encrypted_profile`, `encrypted_backup` and `encrypted_crash`;
+the probe is selected from `probe-build`, not the test-harness copy compiled
+by `store-tests`. Every eligible record is reconciled; separate portability and
+fault-feature builds are retained separately even if Cargo reuses an executable
+path. Collection copies each command's binaries before starting the next build.
+Target source, kind, test profile, feature set, target directory, native
+architecture and retained byte hashes are checked against the command plan.
+Successful commands require the full eligible target set, including the
+`encrypted_crash` harness in `portability-tests`, and exact correspondence with
+the eligible Cargo execution lines. Two targets in one command cannot share an
+executable path; separate command invocations may rebuild that path. Every file
+under `binaries/` must appear in the successful bundle's binary inventory.
+Native headers must identify PE on Windows, ELF on Linux, and Mach-O on macOS,
+in addition to the expected CPU architecture. Incomplete failed commands keep
+their partial compiler/execution evidence and their failed status.
 These are evidence executables, not release packages.
 
 Command records include argv, executable, timestamps, exit code, signal/error,
-derived status and all named test outcomes. Failed setup/builds retain diagnostics;
+working directory, derived status and all named test outcomes. The probe record
+measures its actual executable immediately before and after invocation; both
+measurements must match the retained compiler executable. Its output argument
+must be the `probe` subdirectory of the originally collected bundle directory.
+The absolute paths describe the original host, not the later extraction root.
+Failed setup/builds retain diagnostics;
 unreached commands are enumerated in `notRun`. Cancellation before collection or
 upload can still prevent a bundle: the hosted job log/conclusion must then be
 recorded as missing artifact evidence, never silently accepted.
+
+Platform-specific prerequisite plans include exact executable/arguments for
+Node, Rust, Cargo, Perl, fetch, Linux/macOS C and make, and both Windows setup
+and verification commands. Node's host and command observations must agree
+with `.nvmrc` from the exact Git source object. Windows observations bind the
+admitted archive metadata and measured size/hash, interpreter path and measured
+bytes, exact identity/module invocations and outputs, and the no-PATH policy to
+that source's `windows-toolchain.json`. Only matching entries within the admitted
+install root are inspected for PATH evidence; the ambient PATH is not uploaded.
+Both Windows observations must agree, `OPENSSL_SRC_PERL` must name the admitted
+interpreter, and `OPENSSL_RUST_USE_NASM=0` preserves the no-assembly contract.
+The x64 Perl helper is explicitly not a native product architecture claim.
+Missing prerequisites appear in `notRun`; failed commands retain their actual
+exit/output and cannot produce `component_checks_passed`.
+
+Version 2 requires newly collected proof and rejects version 1 inputs. Historical
+v1 archives lack the new invocation measurements and must remain byte-immutable
+v1 evidence, evaluated with their frozen validator and external provenance.
+Changing a manifest version, supplying invented observations, or revalidating an
+old failed job does not create a new run or change its original conclusion.
+These additional unsigned measurements establish internal correspondence only;
+they do not establish authenticity or H1 admission.
 
 Validation requires externally supplied expected repository/run/attempt, commit
 and platform, plus the exact Git commit object in the validating checkout:

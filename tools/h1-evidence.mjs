@@ -3,9 +3,10 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { closeSync, copyFileSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { arch, homedir, machine, platform, release } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CATEGORIES, PLATFORMS, commandPlan } from "./h1-plan.mjs";
+import { CATEGORIES, PLATFORMS, commandPlan, evidencePath, prerequisitePlan } from "./h1-plan.mjs";
+import { binaryIdentity, compilerInventory, measuredBytes, retainBinaries, validateWindowsObservation } from "./h1-correspondence.mjs";
 
 const MAX_FILE = 512 * 1024 * 1024;
 const MAX_TOTAL = 1024 * 1024 * 1024;
@@ -66,18 +67,22 @@ function verifySource(source) {
     offset = end + 2 + bytes.length;
   }
 }
-export function binaryArchitecture(bytes) {
+export function binaryArchitecture(bytes, expectedPlatform) {
+  let format, architecture;
   if (bytes.subarray(0, 2).toString() === "MZ") {
     const offset = bytes.readUInt32LE(0x3c);
     assert.equal(bytes.subarray(offset, offset + 4).toString(), "PE\0\0");
-    return ({ 0x8664: "x64", 0xaa64: "arm64" })[bytes.readUInt16LE(offset + 4)];
-  }
-  if (bytes.subarray(0, 4).equals(Buffer.from([127, 69, 76, 70]))) {
+    format = "PE"; architecture = ({ 0x8664: "x64", 0xaa64: "arm64" })[bytes.readUInt16LE(offset + 4)];
+  } else if (bytes.subarray(0, 4).equals(Buffer.from([127, 69, 76, 70]))) {
     assert.equal(bytes[4], 2); assert.equal(bytes[5], 1);
-    return ({ 62: "x64", 183: "arm64" })[bytes.readUInt16LE(18)];
+    format = "ELF"; architecture = ({ 62: "x64", 183: "arm64" })[bytes.readUInt16LE(18)];
+  } else if (bytes.readUInt32LE(0) === 0xfeedfacf) {
+    format = "Mach-O"; architecture = ({ 0x01000007: "x64", 0x0100000c: "arm64" })[bytes.readUInt32LE(4)];
+  } else throw new Error("unsupported executable format");
+  if (expectedPlatform) {
+    assert.equal(format, ({ win32: "PE", linux: "ELF", darwin: "Mach-O" })[PLATFORMS[expectedPlatform][1]], "executable format differs from platform");
   }
-  if (bytes.readUInt32LE(0) === 0xfeedfacf) return ({ 0x01000007: "x64", 0x0100000c: "arm64" })[bytes.readUInt32LE(4)];
-  throw new Error("unsupported executable format");
+  return architecture;
 }
 export function testOutcomes(log) {
   return [...log.matchAll(/^test (\S+) \.\.\. (ok|FAILED|ignored)(?:[^\r\n]*)$/gmu)].map((match) => ({ name: match[1], status: match[2] }));
@@ -89,22 +94,24 @@ export function commandStatus(row, output, requiredTests = []) {
   if (requiredTests.some((name) => !tests.some((test) => test.name === name && test.status === "ok"))) return "failed";
   return "passed";
 }
-function run(bundle, id, executable, args, requiredTests = []) {
+function run(bundle, id, executable, args, requiredTests = [], measureExecutable = false) {
   const stdout = `logs/${id}.stdout.log`, stderr = `logs/${id}.stderr.log`;
   mkdirSync(join(bundle, "logs"), { recursive: true });
   const out = openSync(join(bundle, stdout), "wx"), err = openSync(join(bundle, stderr), "wx");
   const started = new Date().toISOString();
+  const before = measureExecutable ? digestFile(executable) : null;
   const result = spawnSync(executable, args, { stdio: ["ignore", out, err], timeout: 45 * 60 * 1000, windowsHide: true });
   closeSync(out); closeSync(err);
   const output = readFileSync(join(bundle, stdout), "utf8");
-  const row = { id, executable, args, started, finished: new Date().toISOString(), exitCode: result.status, signal: result.signal, error: result.error?.message ?? null, stdout, stderr };
+  const row = { id, executable, args, cwd: process.cwd(), started, finished: new Date().toISOString(), exitCode: result.status, signal: result.signal, error: result.error?.message ?? null, stdout, stderr };
+  if (measureExecutable) row.executableObservation = { before, after: existsSync(executable) ? digestFile(executable) : null };
   row.status = commandStatus(row, output, requiredTests);
   row.tests = testOutcomes(output);
   write(join(bundle, `commands/${id}.json`), row);
   console.log(`${id}: ${row.status} (exit ${row.exitCode})`);
   return row;
 }
-function deriveCategories(rows, probe) {
+export function deriveCategories(rows, probe) {
   const refs = (ids) => ids.filter((id) => rows.some((row) => row.id === id)).map((id) => `commands/${id}.json`);
   const categories = Object.fromEntries(CATEGORIES.map((id) => [id, { status: "not_run", artifacts: [], reason: "Outside unsigned encrypted component preparation; no H1 acceptance claim." }]));
   categories.platform_build_and_license_receipt = { status: "partial", artifacts: ["source.json", "licenses.json", ...refs(["probe-build", "store-lint", "portability-lint"])], reason: "Native component build and admitted licence bytes only; installer, signing, size budget, updater and distribution/security review missing." };
@@ -187,24 +194,6 @@ export function validateLicenses(bundle, paths, admission, complete) {
   if (complete) assert.deepEqual(names.toSorted(), required, "complete component evidence requires both distinct native notices");
   return notices;
 }
-function retainTestBinaries(bundle, rows, targetArch) {
-  const binaries = [];
-  for (const row of rows) {
-    for (const line of readFileSync(join(bundle, row.stdout), "utf8").split(/\r?\n/u)) {
-      if (!line.startsWith("{")) continue;
-      let item; try { item = JSON.parse(line); } catch { continue; }
-      if (item.reason !== "compiler-artifact" || !item.executable || !["encrypted_profile", "encrypted_backup", "encrypted_crash"].includes(item.target?.name)) continue;
-      const path = `binaries/${row.id}-${basename(item.executable)}`;
-      if (binaries.some((binary) => binary.path === path)) continue;
-      mkdirSync(join(bundle, "binaries"), { recursive: true });
-      copyFileSync(item.executable, join(bundle, path));
-      const architecture = binaryArchitecture(readFileSync(join(bundle, path)));
-      assert.equal(architecture, targetArch);
-      binaries.push({ command: row.id, target: item.target.name, executable: item.executable, path, architecture, ...digestFile(join(bundle, path)) });
-    }
-  }
-  write(join(bundle, "binaries.json"), binaries);
-}
 export function collect(bundle, target) {
   assert(PLATFORMS[target], "unknown platform");
   assert(!existsSync(bundle), "bundle directory must be new");
@@ -224,7 +213,18 @@ export function collect(bundle, target) {
   process.env.CARGO_TARGET_DIR = join(lane, "target");
   process.env.TEMP = process.env.TMP = process.env.TMPDIR = realpathSync(join(lane, "temp"));
   process.env.CARGO_BUILD_JOBS = "1"; process.env.CARGO_INCREMENTAL = "0"; process.env.CARGO_TERM_COLOR = "never";
+  process.env.RUST_TEST_THREADS = "1";
   if (platform() === "win32") process.env.OPENSSL_RUST_USE_NASM = "0";
+  const pin = json("tools/sqlcipher/windows-toolchain.json");
+  if (platform() === "win32") process.env.OPENSSL_SRC_PERL = join(process.env.RUNNER_TEMP, "h1-perl", pin.perl_relative_path);
+  const execution = {
+    cwd: process.cwd(), bundle, runnerTemp: process.env.RUNNER_TEMP ?? null,
+    targetDir: process.env.CARGO_TARGET_DIR, tempDir: process.env.TEMP, nodeExecutable: process.execPath,
+    opensslSrcPerl: platform() === "win32" ? process.env.OPENSSL_SRC_PERL : null,
+    opensslRustUseNasm: platform() === "win32" ? process.env.OPENSSL_RUST_USE_NASM : null,
+  };
+  const prerequisites = prerequisitePlan(target, execution, pin);
+  const binaries = [];
   let failure = null;
   try {
     assert.equal(source.dirty, "", "tracked source must be clean");
@@ -234,41 +234,38 @@ export function collect(bundle, target) {
     assert.equal(host.platform, expected[1]); assert.equal(host.arch, expected[2]);
     assert.equal(host.runnerArch, expected[2] === "arm64" ? "ARM64" : "X64");
     assert.equal(process.version, `v${readFileSync(".nvmrc", "utf8").trim()}`);
-    if (platform() === "win32" && !process.env.OPENSSL_SRC_PERL) {
-      rows.push(run(bundle, "windows-prerequisites", "pwsh", ["-NoProfile", "-File", "tools/h1-prerequisites.ps1"]));
-      assert.equal(rows.at(-1).status, "passed", "pinned native Perl preparation failed");
-      const pin = json("tools/sqlcipher/windows-toolchain.json");
-      process.env.OPENSSL_SRC_PERL = join(process.env.RUNNER_TEMP, "h1-perl", pin.perl_relative_path);
+    for (const plan of prerequisites) {
+      const row = run(bundle, plan.id, plan.executable, plan.args);
+      rows.push(row);
+      assert.equal(row.status, "passed", `prerequisite failed: ${plan.id}`);
+      if (plan.id === "rustc") {
+        const output = readFileSync(join(bundle, row.stdout), "utf8").replaceAll("\r\n", "\n");
+        assert(output.includes(`host: ${expected[3]}\n`) && output.includes("release: 1.98.0\n"));
+      }
     }
-    rows.push(run(bundle, "rustc", "rustc", ["-vV"]));
-    assert.equal(rows.at(-1).status, "passed");
-    assert(readFileSync(join(bundle, rows.at(-1).stdout), "utf8").includes(`host: ${expected[3]}`));
-    assert(readFileSync(join(bundle, rows.at(-1).stdout), "utf8").replaceAll("\r\n", "\n").includes("release: 1.98.0\n"));
-    rows.push(run(bundle, "cargo", "cargo", ["--version"]));
-    rows.push(run(bundle, "perl", process.env.OPENSSL_SRC_PERL || "perl", ["-V"]));
-    if (platform() !== "win32") {
-      rows.push(run(bundle, "cc", "cc", ["--version"]));
-      rows.push(run(bundle, "make", "make", ["--version"]));
-    }
-    if (platform() === "win32") rows.push(run(bundle, "windows-toolchain", process.execPath, ["tools/h1-windows-toolchain.mjs"]));
-    rows.push(run(bundle, "fetch", "cargo", ["fetch", "--locked"]));
-    assert(rows.every((row) => row.status === "passed"), "prerequisite failed");
     nativeLicenses(bundle);
-    for (const command of commandPlan()) rows.push(run(bundle, command.id, "cargo", command.args, command.requiredTests));
+    for (const command of commandPlan()) {
+      const row = run(bundle, command.id, "cargo", command.args, command.requiredTests);
+      rows.push(row);
+      // Retain before a later command can rebuild the same target path.
+      const records = compilerInventory(row, readFileSync(join(bundle, row.stdout), "utf8"), execution, target, readFileSync(join(bundle, row.stderr), "utf8"));
+      binaries.push(...retainBinaries(bundle, row, records, binaryArchitecture, target));
+    }
     if (rows.find((row) => row.id === "probe-build")?.status === "passed") {
-      const binary = join(process.env.CARGO_TARGET_DIR, "debug", `sqlcipher_store_probe${platform() === "win32" ? ".exe" : ""}`);
-      mkdirSync(join(bundle, "binaries"), { recursive: true }); copyFileSync(binary, join(bundle, "binaries", basename(binary)));
-      assert.equal(binaryArchitecture(readFileSync(binary)), expected[2]);
-      rows.push(run(bundle, "probe", binary, ["run", join(bundle, "probe")]));
+      const probes = binaries.filter((binary) => binary.command === "probe-build");
+      assert.equal(probes.length, 1, "exactly one compiled probe required");
+      const probe = probes[0];
+      assert.deepEqual(measuredBytes(probe.executable), { bytes: probe.bytes, sha256: probe.sha256 }, "probe bytes changed since compilation");
+      rows.push(run(bundle, "probe", probe.executable, ["run", join(bundle, "probe")], [], true));
     }
   } catch (error) { failure = error.message; }
-  try { retainTestBinaries(bundle, rows, PLATFORMS[target][2]); } catch (error) { failure = error.message; }
+  write(join(bundle, "binaries.json"), binaries);
   if (!existsSync(join(bundle, "licenses.json"))) write(join(bundle, "licenses.json"), []);
   let observed = null;
   try { observed = readProbe(bundle, rows); } catch (error) { failure = error.message; }
-  const expectedIds = [...commandPlan().map((command) => command.id), "probe"];
+  const expectedIds = [...prerequisites.map((command) => command.id), ...commandPlan().map((command) => command.id), "probe"];
   const notRun = expectedIds.filter((id) => !rows.some((row) => row.id === id));
-  const manifest = { format: "h1-unsigned-evidence", version: 1, acceptedH1: false, productionDataAllowed: false, platform: target, commit, host, context, source: "source.json", commands: rows.map((row) => `commands/${row.id}.json`), notRun, failure, observed, categories: deriveCategories(rows, observed) };
+  const manifest = { format: "h1-unsigned-evidence", version: 2, acceptedH1: false, productionDataAllowed: false, platform: target, commit, host, context, execution, source: "source.json", commands: rows.map((row) => `commands/${row.id}.json`), notRun, failure, observed, categories: deriveCategories(rows, observed) };
   manifest.status = failure || notRun.length || rows.some((row) => row.status !== "passed") ? "failed" : "component_checks_passed";
   manifest.artifacts = files(bundle).map((path) => ({ path, ...digestFile(join(bundle, path)) }));
   write(join(bundle, "manifest.json"), manifest);
@@ -281,7 +278,7 @@ export function validate(bundle, expected) {
   const discovered = files(bundle);
   const manifest = json(join(bundle, "manifest.json"));
   assert.equal(manifest.source, "source.json", "source reference must be source.json");
-  assert.equal(manifest.format, "h1-unsigned-evidence"); assert.equal(manifest.version, 1);
+  assert.equal(manifest.format, "h1-unsigned-evidence"); assert.equal(manifest.version, 2, "evidence v2 requires newly collected execution proof; preserve historical v1 archives");
   assert.equal(manifest.acceptedH1, false); assert.equal(manifest.productionDataAllowed, false);
   assert.match(expected.commit, /^[a-f0-9]{40}$/u);
   for (const key of ["commit", "platform"]) assert.equal(manifest[key], expected[key], `${key} mismatch`);
@@ -307,6 +304,15 @@ export function validate(bundle, expected) {
   assert.equal(source.commit, manifest.commit); assert.equal(source.dirty, "");
   assert.equal(new Set(source.files.map((item) => item.path)).size, source.files.length);
   verifySource(source);
+  const pin = JSON.parse(git(["show", `${source.commit}:tools/sqlcipher/windows-toolchain.json`]));
+  const nodeVersion = `v${git(["show", `${source.commit}:.nvmrc`])}`;
+  const execution = manifest.execution;
+  const pathApi = evidencePath(manifest.platform);
+  for (const key of ["cwd", "bundle", "runnerTemp", "targetDir", "tempDir", "nodeExecutable"]) {
+    assert(typeof execution?.[key] === "string" && pathApi.isAbsolute(execution[key]), `missing absolute execution ${key}`);
+  }
+  const prerequisites = prerequisitePlan(manifest.platform, execution, pin);
+  const plans = [...prerequisites, ...commandPlan().map((plan) => ({ ...plan, executable: "cargo" }))];
   for (const [original, retained] of [["testdata/sqlcipher-canary/store-v2-canaries.txt", "canaries.txt"], ["docs/security/dependency-admission-phase1.json", "dependency-admission.json"]]) {
     const item = source.files.find((file) => file.path === original); assert(item);
     assert.deepEqual(digestFile(join(bundle, retained)), { bytes: item.bytes, sha256: item.sha256 });
@@ -315,44 +321,75 @@ export function validate(bundle, expected) {
   validateLicenses(bundle, paths, admission, manifest.status === "component_checks_passed");
   const rows = manifest.commands.map((path) => { assert(paths.includes(path)); return json(join(bundle, path)); });
   assert.equal(new Set(rows.map((row) => row.id)).size, rows.length);
-  const allowed = new Set(["rustc", "cargo", "perl", "cc", "make", "windows-prerequisites", "windows-toolchain", "fetch", "probe", ...commandPlan().map((command) => command.id)]);
+  const allowed = new Set(["probe", ...plans.map((plan) => plan.id)]);
   for (const row of rows) {
     assert(allowed.has(row.id), "unexpected command");
+    assert.equal(row.cwd, execution.cwd, "command working directory mismatch");
+    assert(manifest.commands.includes(`commands/${row.id}.json`), "command record path mismatch");
+    assert.equal(row.stdout, `logs/${row.id}.stdout.log`); assert.equal(row.stderr, `logs/${row.id}.stderr.log`);
     assert(paths.includes(row.stdout) && paths.includes(row.stderr));
-    const plan = commandPlan().find((command) => command.id === row.id);
-    if (plan) { assert.equal(row.executable, "cargo"); assert.deepEqual(row.args, plan.args); }
+    const plan = plans.find((command) => command.id === row.id);
+    if (plan) { assert.equal(row.executable, plan.executable, `command executable mismatch: ${row.id}`); assert.deepEqual(row.args, plan.args, `command arguments mismatch: ${row.id}`); }
     const output = readFileSync(join(bundle, row.stdout), "utf8");
     assert.equal(row.status, commandStatus(row, output, plan?.requiredTests));
     assert.deepEqual(row.tests, testOutcomes(output));
+    if (row.status !== "passed") continue;
+    if (row.id === "node") assert.equal(output.trim(), manifest.host.node, "Node command and host observation differ");
+    if (row.id === "rustc") {
+      const text = output.replaceAll("\r\n", "\n");
+      assert(text.includes(`host: ${host[3]}\n`) && text.includes("release: 1.98.0\n"), "rustc observation mismatch");
+    }
+    if (["cargo", "perl", "cc", "make"].includes(row.id)) assert(output.trim().length > 0, `missing prerequisite output: ${row.id}`);
+    if (row.id === "cargo") assert.match(output, /^cargo 1\.98\.0(?:\s|$)/u, "Cargo version observation mismatch");
+    if (row.id === "perl") {
+      assert.match(output, /^Summary of my perl5 \(revision \d+ version \d+ subversion \d+\) configuration:/u, "Perl version observation missing");
+      assert(output.replaceAll("\r\n", "\n").includes(`osname=${host[1] === "win32" ? "MSWin32" : host[1]}\n`), "Perl OS observation mismatch");
+      if (host[1] === "win32") assert(output.includes(`archname=${pin.perl_archname}`), "Perl architecture observation mismatch");
+    }
+    if (row.id === "cc") assert.match(output, /^(?:cc \([^\r\n]+\) \d+\.\d+|(?:Apple )?clang version \d+\.\d+)/u, "C compiler version observation missing");
+    if (row.id === "make") assert.match(output, /^GNU Make \d+\.\d+/u, "make version observation missing");
+    if (["windows-prerequisites", "windows-toolchain"].includes(row.id)) validateWindowsObservation(json(join(bundle, row.stdout)), execution, pin, manifest.platform);
   }
-  for (const binary of json(join(bundle, "binaries.json"))) {
+  const binaries = json(join(bundle, "binaries.json"));
+  assert(Array.isArray(binaries));
+  assert.equal(new Set(binaries.map((binary) => binary.path)).size, binaries.length, "duplicate retained binary path");
+  assert.equal(new Set(binaries.map(binaryIdentity)).size, binaries.length, "duplicate binary invocation/target/executable");
+  const compilerRecords = rows.flatMap((row) => compilerInventory(row, readFileSync(join(bundle, row.stdout), "utf8"), execution, manifest.platform, readFileSync(join(bundle, row.stderr), "utf8")));
+  for (const binary of binaries) {
     assert(paths.includes(binary.path));
     assert.deepEqual(digestFile(join(bundle, binary.path)), { bytes: binary.bytes, sha256: binary.sha256 });
     assert.equal(binary.architecture, host[2]);
-    assert.equal(binaryArchitecture(readFileSync(join(bundle, binary.path))), host[2]);
-    const command = rows.find((row) => row.id === binary.command); assert(command);
-    const compilerArtifacts = readFileSync(join(bundle, command.stdout), "utf8").split(/\r?\n/u).flatMap((line) => { try { return [JSON.parse(line)]; } catch { return []; } });
-    assert(compilerArtifacts.some((item) => item.reason === "compiler-artifact" && item.executable === binary.executable && item.target.name === binary.target), "binary missing from compiler output");
+    assert.equal(binaryArchitecture(readFileSync(join(bundle, binary.path)), manifest.platform), host[2]);
+    const compiler = compilerRecords.find((item) => binaryIdentity(item) === binaryIdentity(binary));
+    assert(compiler, "binary missing from compiler output");
+    for (const key of Object.keys(compiler)) assert.deepEqual(binary[key], compiler[key], `binary compiler ${key} mismatch`);
+    assert(source.files.some((file) => file.path === compiler.source), "compiled target missing from source inventory");
   }
-  const notRun = [...commandPlan().map((command) => command.id), "probe"].filter((id) => !rows.some((row) => row.id === id));
+  const probe = rows.find((row) => row.id === "probe");
+  if (probe) {
+    const compiled = binaries.filter((binary) => binary.command === "probe-build");
+    assert.equal(compiled.length, 1, "exactly one retained compiled probe required");
+    assert.equal(probe.executable, compiled[0].executable, "probe invocation differs from compiled executable");
+    assert.deepEqual(probe.args, ["run", pathApi.join(execution.bundle, "probe")], "probe output directory mismatch");
+    const measured = { bytes: compiled[0].bytes, sha256: compiled[0].sha256 };
+    assert.deepEqual(probe.executableObservation?.before, measured, "probe retained bytes differ from invocation measurement");
+    if (probe.status === "passed") assert.deepEqual(probe.executableObservation.after, measured, "probe executable changed during invocation");
+  }
+  const notRun = [...plans.map((command) => command.id), "probe"].filter((id) => !rows.some((row) => row.id === id));
   assert.deepEqual(manifest.notRun, notRun);
   const observed = readProbe(bundle, rows);
   assert.deepEqual(manifest.observed, observed);
   assert.deepEqual(manifest.categories, deriveCategories(rows, observed));
-  const status = manifest.failure || notRun.length || rows.some((row) => row.status !== "passed") ? "failed" : "component_checks_passed";
+  const completeInventory = compilerRecords.length === binaries.length;
+  const status = manifest.failure || notRun.length || !completeInventory || manifest.host.node !== nodeVersion || rows.some((row) => row.status !== "passed") ? "failed" : "component_checks_passed";
   assert.equal(manifest.status, status);
   if (status === "component_checks_passed") {
-    for (const id of ["rustc", "cargo", "perl", "fetch", ...(host[1] === "win32" ? ["windows-toolchain"] : ["cc", "make"])]) assert(rows.some((row) => row.id === id), `missing prerequisite ${id}`);
-    const rust = rows.find((row) => row.id === "rustc");
-    assert.deepEqual(rust.args, ["-vV"]); assert.equal(rust.executable, "rustc");
-    const text = readFileSync(join(bundle, rust.stdout), "utf8").replaceAll("\r\n", "\n");
-    assert(text.includes(`host: ${host[3]}\n`) && text.includes("release: 1.98.0\n"));
-    const probe = rows.find((row) => row.id === "probe");
-    assert.equal(probe.args.length, 2); assert.equal(probe.args[0], "run");
-    const binary = `binaries/sqlcipher_store_probe${host[1] === "win32" ? ".exe" : ""}`;
-    assert(paths.includes(binary));
-    assert.equal(binaryArchitecture(readFileSync(join(bundle, binary))), host[2]);
-    const binaries = json(join(bundle, "binaries.json"));
+    assert.deepEqual(paths.filter((path) => path.startsWith("binaries/")).sort(), binaries.map((binary) => binary.path).sort(), "retained binary files and inventory differ");
+    assert(observed, "successful component evidence requires probe observations");
+    if (host[1] === "win32") {
+      const observations = ["windows-prerequisites", "windows-toolchain"].map((id) => json(join(bundle, rows.find((row) => row.id === id).stdout)));
+      assert.deepEqual(observations[0], observations[1], "Windows prerequisite observations changed before build");
+    }
     for (const [command, target] of [["store-tests", "encrypted_profile"], ["portability-tests", "encrypted_backup"], ["encrypted-crash", "encrypted_crash"]]) assert(binaries.some((binary) => binary.command === command && binary.target === target), "required test binary missing");
   }
   return { integrity: "verified", status, acceptedH1: false, platform: manifest.platform, commit: manifest.commit };

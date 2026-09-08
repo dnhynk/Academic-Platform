@@ -1,4 +1,26 @@
 // Ordinary synthetic encrypted correctness only; no admission/signing commands.
+import { posix, win32 } from "node:path";
+
+export const evidencePath = (target) => PLATFORMS[target][1] === "win32" ? win32 : posix;
+
+export const PERL_IDENTITY_ARGS = ["-e", "print $^V, qq(\\n), $Config::Config{archname}, qq(\\n)", "-MConfig"];
+export const PERL_MODULE_ARGS = ["-e", "use Locale::Maketext::Simple; use Params::Check; use IPC::Cmd; use Pod::Usage; print qq(ok\\n)"];
+
+export function prerequisitePlan(target, execution, pin) {
+  const windows = PLATFORMS[target][1] === "win32";
+  return [
+    ...(windows ? [{ id: "windows-prerequisites", executable: "pwsh", args: ["-NoProfile", "-File", "tools/h1-prerequisites.ps1"] }] : []),
+    { id: "node", executable: execution.nodeExecutable, args: ["--version"] },
+    { id: "rustc", executable: "rustc", args: ["-vV"] },
+    { id: "cargo", executable: "cargo", args: ["--version"] },
+    { id: "perl", executable: windows ? evidencePath(target).join(execution.runnerTemp, "h1-perl", pin.perl_relative_path) : "perl", args: ["-V"] },
+    ...(windows ? [{ id: "windows-toolchain", executable: execution.nodeExecutable, args: ["tools/h1-windows-toolchain.mjs"] }] : [
+      { id: "cc", executable: "cc", args: ["--version"] },
+      { id: "make", executable: "make", args: ["--version"] },
+    ]),
+    { id: "fetch", executable: "cargo", args: ["fetch", "--locked"] },
+  ];
+}
 export const PLATFORMS = {
   "windows-x86_64": ["windows-latest", "win32", "x64", "x86_64-pc-windows-msvc"],
   "windows-aarch64": ["windows-11-arm", "win32", "arm64", "aarch64-pc-windows-msvc"],

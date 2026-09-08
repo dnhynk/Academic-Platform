@@ -55,7 +55,13 @@ Windows uses the already admitted
 `32d83be90cf04b807cfb9477482bc36302cdee6f5b04cf57e81adecbd8f07898`.
 The collector retains setup stdout/stderr and exit status. Size and digest are
 checked before extraction; identity/modules are checked against every existing
-pin by `h1-windows-toolchain.mjs`. The original local verifier requires a fixed
+pin by `h1-windows-toolchain.mjs`. Evidence v2 retains both setup and pre-build
+archive measurements, interpreter byte measurements, exact identity/module
+commands and outputs, and an observation that no PATH entry is inside the
+admitted extraction root. Validation compares these observations and the Node
+version with the pins in the actual tested Git source. Failed or incomplete
+prerequisites remain failed evidence, independently of inventory integrity.
+The original local verifier requires a fixed
 user-machine `D:` path. The hosted variant deliberately uses
 `RUNNER_TEMP/h1-perl` and `RUNNER_TEMP/h1-perl-download` on the runner's own
 volume (the observed ARM workspace is on `C:`). It changes no archive, digest,
