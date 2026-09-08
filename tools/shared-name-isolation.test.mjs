@@ -535,6 +535,10 @@ const DISCRIMINATORS = new Set([
  */
 const SHARED_NAME_SITES = new Map([
   [
+    'crates/core/src/details/domain.rs :: base.join(format!("academic-domain-read-{}-{}",std::process::id(),NEXT.fetch_add(1,Ordering::Relaxed)))',
+    "UNIQUE: each domain-read synthetic test profile uses process id and its atomic counter beneath the task temporary root.",
+  ],
+  [
     'crates/core/src/details.rs :: path.join("detail-incarnation.v1")',
     "SHARED, deliberately: the fixed incarnation marker inside the test profile returned by detail_test_root, whose parent name is isolated by process id and an atomic counter; this test corrupts only its own marker to verify fail-closed reopen.",
   ],

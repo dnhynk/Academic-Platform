@@ -152,7 +152,85 @@ undo through the supplied native client. Run it only against a disposable seeded
 synthetic profile. The UI integration owns the corresponding update to the
 desktop-shell smoke documentation and actual DOM smoke implementation.
 
-## Verification and dependency ownership
+## Version 3 normal-domain read scaffold
+
+The independent `learning-platform.local.details-domain-read.v3` capability
+adds the closed `details_domain_read_v3` operation to the existing bounded JSON
+frames and `desktop_request_v1` invoke. Its context requires both domain and
+scope; its selector binds known and valid coordinates; its query selects one
+complete surface index or one typed subject. No producer payload, actor, source
+path or canonical write operation crosses this command. Imported v1 source
+history, the corrected `academic.details.v2` projection and original decision
+receipt retry semantics keep their existing wire shapes. V3 replies have no
+imported receipt fields. A UI can distinguish the imported source namespace from
+`domain_projection` without equating their identities.
+
+The store-owned `domain_history_snapshot` reads original envelopes, replica
+revision, selected coordinates, source-outbox binding and aggregate timeline in
+one deferred transaction. Core authenticates each envelope with the
+host-selected independent authorization, replays complete-batch closure and
+checks original local acceptance ranges and the outbox source digest. Aggregate
+frame rows are compared with the authenticated event registrations. Resolution
+uses the canonical scoped resolver at those coordinates. The emitted authority
+is `CANONICAL_SNAPSHOT`; no materialized-graph generation or configuration
+preimage is invented. The returned profile identity includes the existing
+incarnation check, while actor, origin order/time, acceptance sequence and valid
+time stay separate.
+
+V3 accepts a known watermark of zero or an exact completed batch end. An
+interior-batch selector returns `SELECTOR_UNAVAILABLE`; it never rounds to a
+batch boundary or falls back to the current view. The lower store accessor
+continues to return full original envelopes at exact interior coordinates,
+while this v3 restriction ensures every emitted provenance event can be cited
+at or before the selected watermark.
+
+The default schema-one profile cannot admit aggregate registrations. This
+scaffold therefore returns `PROJECTION_UNAVAILABLE` for a normal-domain surface
+on that profile, and unknown contexts return `CONTEXT_UNAVAILABLE`. Positive
+registration-command acceptance depends on the separately reviewed encrypted
+synthetic service and registration policy. An in-memory projection or a DTO
+round trip does not close that dependency. This change grants no admission,
+migration, fingerprint, producer or ordinary-domain write capability.
+
+For a supported authenticated aggregate snapshot, the implemented projection
+availability is deliberately narrow:
+
+| Surface or field | Read implementation | Remaining source dependency |
+| --- | --- | --- |
+| Lecture index/detail identity | Actual `LectureSessionId`, `OfferingId` parent, event/acceptance/validity provenance | Accepted registration service; no `EntityId` cast |
+| Lecture transcript/document identity | Actual matching registered version/document IDs | Body schema and producer; registration-only content stays unavailable |
+| Lecture document/coverage/captures/review/audio | Explicit typed unavailability | Validated bodies, alignment, coverage witnesses and original-media reader |
+| Concept identity/title | Actual identity-change anchor and scoped resolved kind/label claims; exact label text | Accepted identity registrations; ambiguous kind refuses the complete index, ambiguous label is `AMBIGUOUS_IN_SCOPE` |
+| Concept `USED_IN` | Concept-to-concept canonical claim, verified endpoint kinds, registry evidence rules and scoped resolution; complete query witness | Accepted endpoint registrations; unsupported endpoint mappings remain unavailable |
+| Concept state/freshness/strong evidence and other groups | `PRODUCER_NOT_CONNECTED` | Accepted typed knowledge results and each group's supported relation/history adapter |
+| Question and project surfaces | `PROJECTION_UNAVAILABLE` | Canonical subject mapping plus accepted typed body/association producer |
+| Evidence locator and provenance | Exact accepted evidence/artifact IDs, representation index, role/strength and extractor metadata | No label is promoted into domain authority |
+| Evidence excerpt | Exact whole-artifact UTF-8 reading aid after bounded retained-vault digest/read-back verification | Missing bytes: `SOURCE_BODY_UNAVAILABLE`; unsupported mapping: `UNSUPPORTED_FIELD`; wrong digest: read refusal |
+| Ordinary relation action | `CANONICAL_RELATION_WRITE_ADAPTER_MISSING` | Separately reviewed canonical decision adapter |
+
+The wire preserves all six question statuses, all document-node kinds and
+preservation transforms, typed confidence/freshness, original ID newtypes and
+separate snapshot/repository/optional branch/optional commit/dirty identities.
+Declaring those fields does not assert the corresponding body producer exists.
+Existing ordinary user decisions may be read with their original claim target
+and accepted-event provenance; imported disposition claims cannot supply them.
+
+Every available field carries nonempty acyclic provenance. Empty supported
+queries require a complete scoped query witness. Indices refuse above 256
+entries, provenance above 512 entries and field references above 32; excerpts
+have a 262144-byte total ceiling under the existing 1 MiB frame, depth 24,
+4096-item list, 128-field object and 65536-byte string limits. Numeric JSON
+coordinates must be JavaScript-safe; signed/unsigned full-width coordinates
+use canonical decimal strings. Bounds refuse instead of truncating or rounding.
+
+The new RPC structs reuse the existing dependencies. The source-policy inventory
+adds only the closed read DTO roots, redacted excerpt/document/transcript content
+and the isolated test path. No scanner rule or discovery floor is weakened.
+Full X4 remains open for ordinary producer coverage, canonical relation
+disposition, original media, exact staged policy preview and integrated native
+UI verification.
+
+## Existing imported verification and dependency ownership
 
 Core tests cover empty/different profiles, exact history and restart retries,
 revision/idempotency/profile guards, reject/undo targets, profile restoration

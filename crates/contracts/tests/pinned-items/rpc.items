@@ -24,7 +24,7 @@ crates/rpc/src/convert.rs [priv] fn validate_mutable_request_wire(bytes: &[u8]) 
 crates/rpc/src/convert.rs [priv] fn validate_nonempty_bounded( value: &str, field: &'static str, maximum: usize, ) -> Result<(), RpcError> |85e70dca4fc9bd21
 crates/rpc/src/convert.rs [priv] fn validate_receipt(receipt: &generated::ImmutableReceipt) -> Result<ValidatedReceipt, RpcError> |53ebe8c954e62606
 crates/rpc/src/convert.rs [priv] fn validate_restore_command_wire(bytes: &[u8]) -> Result<(), RpcError> |4611138f18e5f960
-crates/rpc/src/convert.rs [priv] fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> |7fe6f67f7711372f
+crates/rpc/src/convert.rs [priv] fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> |77693901567e7f7f
 crates/rpc/src/convert.rs [priv] impl IdempotencyKey
 crates/rpc/src/convert.rs [priv] impl OpaqueId
 crates/rpc/src/convert.rs [priv] mod tests :: #[test] fn an_admitted_handshake_validates_on_the_client() -> Result<(), RpcError> |225684414280364a
@@ -44,7 +44,7 @@ crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] enum Vali
 crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ValidatedMutableRequest |736e47ac3cbc4353
 crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ValidatedMutableResponse |5bbb21066dee57c5
 crates/rpc/src/convert.rs [pub] fn validate_closed_envelope_wire(bytes: &[u8]) -> Result<(), RpcError> |42fb5ae23b79064c
-crates/rpc/src/convert.rs [pub] fn validate_envelope(envelope: &LocalCoreEnvelope) -> Result<FrameClass, RpcError> |b6b5cfc115445393
+crates/rpc/src/convert.rs [pub] fn validate_envelope(envelope: &LocalCoreEnvelope) -> Result<FrameClass, RpcError> |18c25a5d2176e375
 crates/rpc/src/convert.rs [pub] fn validate_mutable_request( request: &MutableRequest, ) -> Result<ValidatedMutableRequest, RpcError> |4da363c108e2e2dd
 crates/rpc/src/convert.rs [pub] fn validate_mutable_response( response: &MutableResponse, ) -> Result<ValidatedMutableResponse, RpcError> |0a775e7bf2e3552a
 crates/rpc/src/convert.rs [pub] impl IdempotencyKey :: #[must_use] const fn as_bytes(&self) -> &[u8; IDEMPOTENCY_KEY_BYTES] |734385d593496b44
@@ -119,6 +119,211 @@ crates/rpc/src/digest.rs [priv] fn append_optional_u64(bytes: &mut Vec<u8>, valu
 crates/rpc/src/digest.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
 crates/rpc/src/digest.rs [priv] use crate::{ RpcError, convert::{ValidatedWriteCommand, validate_mutable_request}, generated::MutableRequest, } |125b06b75ccca425
 crates/rpc/src/digest.rs [pub] fn mutable_request_digest(request: &MutableRequest) -> Result<ContentDigest, RpcError> |799e8c12bfac168b
+crates/rpc/src/domain_details.rs [priv] impl Digest
+crates/rpc/src/domain_details.rs [priv] impl From<ContentDigest> for Digest
+crates/rpc/src/domain_details.rs [priv] impl From<ContentDigest> for Digest :: fn from(value: ContentDigest) -> Self |a1551afbd985800c
+crates/rpc/src/domain_details.rs [priv] impl From<Digest> for String
+crates/rpc/src/domain_details.rs [priv] impl From<Digest> for String :: fn from(value: Digest) -> Self |c65cc2c8c35d77fd
+crates/rpc/src/domain_details.rs [priv] impl From<I64Decimal> for String
+crates/rpc/src/domain_details.rs [priv] impl From<I64Decimal> for String :: fn from(value: I64Decimal) -> Self |43ee15addacebf2d
+crates/rpc/src/domain_details.rs [priv] impl From<OpaqueEngineId> for String
+crates/rpc/src/domain_details.rs [priv] impl From<OpaqueEngineId> for String :: fn from(value: OpaqueEngineId) -> Self |810be957525fd695
+crates/rpc/src/domain_details.rs [priv] impl From<U64Decimal> for String
+crates/rpc/src/domain_details.rs [priv] impl From<U64Decimal> for String :: fn from(value: U64Decimal) -> Self |6a6fc015f9e85f61
+crates/rpc/src/domain_details.rs [priv] impl From<i64> for I64Decimal
+crates/rpc/src/domain_details.rs [priv] impl From<i64> for I64Decimal :: fn from(value: i64) -> Self |673e968d870e76b9
+crates/rpc/src/domain_details.rs [priv] impl From<u64> for U64Decimal
+crates/rpc/src/domain_details.rs [priv] impl From<u64> for U64Decimal :: fn from(value: u64) -> Self |d05ecf630422db5d
+crates/rpc/src/domain_details.rs [priv] impl TryFrom<String> for Digest
+crates/rpc/src/domain_details.rs [priv] impl TryFrom<String> for Digest :: fn try_from(value: String) -> Result<Self, Self::Error> |5e56a56706554838
+crates/rpc/src/domain_details.rs [priv] impl TryFrom<String> for Digest :: type Error = RpcError |86878f735e48ccb8
+crates/rpc/src/domain_details.rs [priv] impl TryFrom<String> for I64Decimal
+crates/rpc/src/domain_details.rs [priv] impl TryFrom<String> for I64Decimal :: fn try_from(value: String) -> Result<Self, Self::Error> |bc23aaa8ff41c56b
+crates/rpc/src/domain_details.rs [priv] impl TryFrom<String> for I64Decimal :: type Error = RpcError |86878f735e48ccb8
+crates/rpc/src/domain_details.rs [priv] impl TryFrom<String> for OpaqueEngineId
+crates/rpc/src/domain_details.rs [priv] impl TryFrom<String> for OpaqueEngineId :: fn try_from(value: String) -> Result<Self, Self::Error> |f0b84ea320d93ba4
+crates/rpc/src/domain_details.rs [priv] impl TryFrom<String> for OpaqueEngineId :: type Error = RpcError |86878f735e48ccb8
+crates/rpc/src/domain_details.rs [priv] impl TryFrom<String> for U64Decimal
+crates/rpc/src/domain_details.rs [priv] impl TryFrom<String> for U64Decimal :: fn try_from(value: String) -> Result<Self, Self::Error> |11f8774b72d4f5af
+crates/rpc/src/domain_details.rs [priv] impl TryFrom<String> for U64Decimal :: type Error = RpcError |86878f735e48ccb8
+crates/rpc/src/domain_details.rs [priv] impl UnavailableField
+crates/rpc/src/domain_details.rs [priv] impl std::fmt::Debug for ByteExcerpt
+crates/rpc/src/domain_details.rs [priv] impl std::fmt::Debug for ByteExcerpt :: fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result |7c80bd34ba7f5b4c
+crates/rpc/src/domain_details.rs [priv] impl std::fmt::Debug for DocumentNode
+crates/rpc/src/domain_details.rs [priv] impl std::fmt::Debug for DocumentNode :: fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result |521f7bb8e3eed1a1
+crates/rpc/src/domain_details.rs [priv] impl std::fmt::Debug for DomainTranscriptSegment
+crates/rpc/src/domain_details.rs [priv] impl std::fmt::Debug for DomainTranscriptSegment :: fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result |ead18b5d48c2fe7c
+crates/rpc/src/domain_details.rs [priv] impl std::fmt::Debug for Excerpt
+crates/rpc/src/domain_details.rs [priv] impl std::fmt::Debug for Excerpt :: fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result |017078a39a645356
+crates/rpc/src/domain_details.rs [priv] impl<T> Field<T>
+crates/rpc/src/domain_details.rs [priv] impl<T> std::fmt::Debug for Field<T>
+crates/rpc/src/domain_details.rs [priv] impl<T> std::fmt::Debug for Field<T> :: fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result |4296d7e8c60b2d9b
+crates/rpc/src/domain_details.rs [priv] mod validation
+crates/rpc/src/domain_details.rs [priv] use academic_domain::{ ArtifactId, AuthorityClass, ClaimId, ContentDigest, DecisionId, DomainId, EntityId, EntityIdentityChangeId, EpistemicStatus, EventId, EvidenceId, EvidenceRole, EvidenceStrength, FindingId, LectureDocumentId, LectureSessionId, OfferingId, RepositoryId, ScopeId, SnapshotId, TranscriptVersionId, } |46dd22f40e506c10
+crates/rpc/src/domain_details.rs [priv] use crate::{RpcError, details::invalid} |f5c3222798fe4772
+crates/rpc/src/domain_details.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/rpc/src/domain_details.rs [pub] #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ByteExcerpt |0a7c9623a448dcfc
+crates/rpc/src/domain_details.rs [pub] #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DocumentNode |558719c7f303771f
+crates/rpc/src/domain_details.rs [pub] #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DomainTranscriptSegment |898dca72fa72ca89
+crates/rpc/src/domain_details.rs [pub] #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Excerpt |4833f12fb45b562f
+crates/rpc/src/domain_details.rs [pub] #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "state", rename_all = "snake_case", deny_unknown_fields)] enum Field<T> |98c99177043d5447
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum AnalyzeReason |fa95ac3a65001b5d
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum AuthorityPolicy |6d7ff959d97402d9
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CommitAlgorithm |9119341934e2775d
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Completeness |ccd1c1615d2beb20
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ConfidenceKind |03a21321f768d9a6
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum CrossReferenceReason |6a5bded97e5cb89f
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Direction |7b181bab64e45a2a
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum DocumentAnnotation |51b1703d45da2faf
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum GroupKind |662ab84becc5c835
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum HistoryOrder |8a9c995d09ac5cbc
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum HistoryTrack |bac76114ec3d3027
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Importance |95a6376fe4728662
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Inbox |c8a35639fc352eb4
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum IndexOrder |6442afaaa8ffaa41
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum MissingReason |94aa71b95cbf17e1
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum NodeKind |e2c271b5fe229fe1
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum Playback |e9d0b8c21dc88807
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum PreservationTransform |049db70f54f03522
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ProviderPreviewReason |92e3566b876d4133
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum QuestionStatus |e15458e4b5dc8cd0
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ReadFailure |148e8f97dbba8557
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum RelationOrder |7ec62aa632d219af
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum RelationWriteReason |f406e13ac883368a
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum ReviewKind |06fba676a81fb4cb
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum SegmentDisposition |695b2e7fe1201c99
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum SufficiencyGap |3486831768348548
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum SufficiencyKind |8481a68285087acc
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum TextEncoding |05033c7b448bd633
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum UnseenBasis |01315f3ef54a5ec1
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum UserAction |ab14b0c356a5bcfb
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "SCREAMING_SNAKE_CASE")] enum VerifiedState |198f2644fad0d650
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "snake_case")] enum DomainView |8d73d3c6d2b6edf8
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "snake_case")] enum SourceKind |302cb5b8dff562db
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "snake_case")] enum Surface |7118dd45f8d9cded
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "snake_case")] enum Tokenizer |926b2a61f4349ce8
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(rename_all = "snake_case")] enum UnavailableState |d1be7e0fa24248ce
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct Digest(String) |89f4ac169740ef45
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Analyze |36492be5f3449458
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Binding |45f59b67627186c0
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct CalibratedConfidence |fffb82ccd3a2aa3a
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Capture |39845d7e2124d0da
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Commit |11787119197d6a58
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ConceptHistory |44515b517692a35b
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Context |b46d604147fe8a07
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Coverage |7fad4ec628e19787
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct CrossReference |934bc3dde8981553
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DirtySnapshot |7e411a9469573c09
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Document |a7769d9b858f79fb
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DomainCompletenessWitness |a7391d40686a8c09
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DomainProjection |488894b1a2b0a257
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DomainSegmentAccount |6ceaa9bb7a774784
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct DomainSelector |801996b6c0d0dfe1
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct EvidenceRef |f23b75f604644525
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct EvidenceSufficiency |f0b7886114680c78
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Fluency |4870607778c99480
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Freshness |ecfee07524b52b7d
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct GoalContext |a3867c5ada860893
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct GraphRow |61b102d4917cc627
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct IndexEntry |5d93231e1522c3a8
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct KnowledgeConfirmation |812b4e7033d69dca
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct KnowledgeState |f4fbf1edb6b25549
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct OriginEvent |b6fb3966bb3abbfa
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct OriginalMedia |7fb65f88d9017b6a
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct PolicyRegistry |c2b9add32cbbc807
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct PredicatePolicy |8b8ad0cdc3e72abe
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ProjectGoal |66e4533968e5c56e
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ProjectionSource |51bffefc176be155
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ProvenanceEntry |3c41f3c2952eef12
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ProviderPreview |49e86d93f3993d4e
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct QueryCoordinates |f44641c24cf0cc42
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct QuestionLifecycle |652545cae494c5a7
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct QuestionResolution |d5d01a6cb47d568d
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct QuestionRevision |e3406426b604d26d
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ReadSource |a57f5d85c92ca7a2
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Relation |35a77aeeb781b926
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct RelationGroup |7a603bb215a00877
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct RelationWrites |5d72e9e135041b39
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct RepositorySnapshot |8d0603d5e693ea50
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct ReviewItem |d08cd3c71e26c2bb
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct SourceCoordinates |43727a83bd3a9cf3
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct SourceFile |1200687443862108
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct SourceMapping |2a9f709ae45b0b20
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct StrongEvidence |0d68ce2c80cc0b41
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct SufficiencyDeduction |1a12f6f4f7074106
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct Transcript |90f94790d857f56c
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct UnavailableField |01454006914afa91
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct UpcomingContext |a8d723624ecbca48
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct UserDecisionRef |bedf10d2d3e9c908
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(deny_unknown_fields)] struct VerifiedQuery |adf393ea2499d45d
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "command", rename_all = "snake_case", deny_unknown_fields)] enum DomainReadRequest |32c56c28780c984f
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE", deny_unknown_fields)] enum ActorRef |f6b93ce9b856cee5
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE", deny_unknown_fields)] enum GraphAvailability |cc75db0d7f6466c2
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE", deny_unknown_fields)] enum Locator |78bdfc37c4a7b423
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE", deny_unknown_fields)] enum OriginalId |5fdb36501a6ff9a3
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE", deny_unknown_fields)] enum ProvenanceOrigin |beebd1cbd30b3ad8
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE", deny_unknown_fields)] enum QuerySelection |836970349d5d4564
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE", deny_unknown_fields)] enum QuestionOrigin |29d98eb0478dda7a
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE", deny_unknown_fields)] enum ReadAuthority |11a2d14e13833148
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)] enum DomainDetail |9172ed34a4bf5045
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)] enum Query |5e23d976db5541a6
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)] enum QueryResult |06c07f98bbb228aa
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)] enum Subject |a6538d7211e3131b
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(tag = "state", rename_all = "snake_case", deny_unknown_fields)] enum DomainReadReply |eff6a4a4477c49c3
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct I64Decimal(String) |2c84b29c5cf5d170
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct OpaqueEngineId(String) |b2fca98c94f13694
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(try_from = "String", into = "String")] struct U64Decimal(String) |422eb551a3ff8714
+crates/rpc/src/domain_details.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(untagged)] enum RelationTarget |b9db1499e8e5958a
+crates/rpc/src/domain_details.rs [pub] const CAPABILITY: &str |6ad68c9bc8fc4528
+crates/rpc/src/domain_details.rs [pub] const MAX_EXCERPT_BYTES: usize |5e80b962f287d965
+crates/rpc/src/domain_details.rs [pub] const MAX_FIELD_REFS: usize |4de88d3d27f6a2be
+crates/rpc/src/domain_details.rs [pub] const MAX_INDEX_ENTRIES: usize |083125d5f75aedbe
+crates/rpc/src/domain_details.rs [pub] const MAX_PROVENANCE_ENTRIES: usize |aff8ddbe13418356
+crates/rpc/src/domain_details.rs [pub] const PROJECTOR_VERSION: &str |a0d1824042a35e2c
+crates/rpc/src/domain_details.rs [pub] impl Digest :: fn as_str(&self) -> &str |a243188c071adaa3
+crates/rpc/src/domain_details.rs [pub] impl UnavailableField :: fn new(reason: MissingReason, source_ids: Vec<OriginalId>) -> Self |c265d3d3cc4953fa
+crates/rpc/src/domain_details.rs [pub] impl<T> Field<T> :: fn available(value: T, provenance_refs: Vec<String>) -> Result<Self, RpcError> |f8f24906d655a4c1
+crates/rpc/src/domain_details.rs [pub] impl<T> Field<T> :: fn unavailable(reason: MissingReason, source_ids: Vec<OriginalId>) -> Self |68f311cbec12679c
+crates/rpc/src/domain_details.rs [pub] mod wire
+crates/rpc/src/domain_details/validation.rs [priv] fn generation(id: &str) -> Result<(), RpcError> |33d5a556dbfeb3a4
+crates/rpc/src/domain_details/validation.rs [priv] fn inspect( value: &Value, entries: &BTreeMap<&str, &ProvenanceEntry>, refs: &mut BTreeSet<String>, excerpt_bytes: &mut usize, ) -> Result<(), RpcError> |9120351fb0bddb55
+crates/rpc/src/domain_details/validation.rs [priv] fn origin_field( field: &Field<OriginEvent>, sequence: u64, scope: Option<ScopeId>, event_id: Option<EventId>, entries: &BTreeMap<&str, &ProvenanceEntry>, ) -> Result<(), RpcError> |5a24a96d1aa6b148
+crates/rpc/src/domain_details/validation.rs [priv] fn validate_actor(actor: &ActorRef) -> Result<(), RpcError> |0444a12d494fe1dd
+crates/rpc/src/domain_details/validation.rs [priv] fn validate_evidence(item: &EvidenceRef) -> Result<(), RpcError> |6cd0676898062f2b
+crates/rpc/src/domain_details/validation.rs [priv] fn visit( reference: &str, graph: &BTreeMap<&str, BTreeSet<String>>, active: &mut BTreeSet<String>, verified_heights: &mut BTreeMap<String, usize>, depth: usize, ) -> Result<usize, RpcError> |bd518ed8268bc93d
+crates/rpc/src/domain_details/validation.rs [priv] impl DomainDetail
+crates/rpc/src/domain_details/validation.rs [priv] impl DomainProjection
+crates/rpc/src/domain_details/validation.rs [priv] impl DomainProjection :: fn validate_origin( &self, entry: &ProvenanceEntry, entries: &BTreeMap<&str, &ProvenanceEntry>, sources: &BTreeMap<&str, &ReadSource>, ) -> Result<(), RpcError> |5b4e707c13fd90f7
+crates/rpc/src/domain_details/validation.rs [priv] impl DomainProjection :: fn validate_result(&self, entries: &BTreeMap<&str, &ProvenanceEntry>) -> Result<(), RpcError> |ba4388b08ca03bb9
+crates/rpc/src/domain_details/validation.rs [priv] impl DomainReadReply
+crates/rpc/src/domain_details/validation.rs [priv] impl DomainReadRequest
+crates/rpc/src/domain_details/validation.rs [priv] impl Subject
+crates/rpc/src/domain_details/validation.rs [priv] use serde_json::Value |b6580dcaa8a7c3be
+crates/rpc/src/domain_details/validation.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
+crates/rpc/src/domain_details/validation.rs [priv] use super::* |19dbf88307d136ac
+crates/rpc/src/domain_details/validation.rs [pub(super)] fn validate_refs(refs: &[String], required: bool) -> Result<(), RpcError> |6227cce0ad7142b6
+crates/rpc/src/domain_details/validation.rs [pub] impl DomainDetail :: fn groups(&self) -> &[RelationGroup] |4d1034d0f0fe8a53
+crates/rpc/src/domain_details/validation.rs [pub] impl DomainDetail :: fn subject(&self) -> &Subject |f0b805f3f0e91e83
+crates/rpc/src/domain_details/validation.rs [pub] impl DomainProjection :: fn validate(&self) -> Result<(), RpcError> |6edf15793bb0c581
+crates/rpc/src/domain_details/validation.rs [pub] impl DomainReadReply :: fn ready(projection: DomainProjection) -> Result<Self, RpcError> |30ed9bc0b87d25e1
+crates/rpc/src/domain_details/validation.rs [pub] impl DomainReadReply :: fn unavailable(reason: ReadFailure) -> Self |6c44b7d5c4061e22
+crates/rpc/src/domain_details/validation.rs [pub] impl DomainReadReply :: fn validate(&self) -> Result<(), RpcError> |f472cd79596a5446
+crates/rpc/src/domain_details/validation.rs [pub] impl DomainReadReply :: fn validate_for(&self, request: &DomainReadRequest) -> Result<(), RpcError> |ca43f5b15a516f6b
+crates/rpc/src/domain_details/validation.rs [pub] impl DomainReadRequest :: fn parts(&self) -> (&Context, &DomainSelector, &Query) |a658426bf4ee0a84
+crates/rpc/src/domain_details/validation.rs [pub] impl DomainReadRequest :: fn validate(&self) -> Result<(), RpcError> |8d5eb3d19777c0e7
+crates/rpc/src/domain_details/validation.rs [pub] impl Subject :: const fn surface(&self) -> Surface |19be88988deda044
+crates/rpc/src/domain_details/validation.rs [pub] impl Subject :: fn canonical_id(&self) -> String |f1337cd69de2a965
+crates/rpc/src/domain_details/validation.rs [pub] impl Subject :: fn context(&self) -> Context |0a327ce7addedc47
+crates/rpc/src/domain_details/wire.rs [priv] impl DetailFrameReply
+crates/rpc/src/domain_details/wire.rs [priv] impl DetailFrameRequest
+crates/rpc/src/domain_details/wire.rs [priv] use crate::{ RpcError, details::{DetailReply, DetailRequest}, } |b938ae9c2ffc182e
+crates/rpc/src/domain_details/wire.rs [priv] use serde::{Deserialize, Serialize} |fa058b4b0e49e249
+crates/rpc/src/domain_details/wire.rs [priv] use super::{CAPABILITY, DomainReadReply, DomainReadRequest} |7df3ee8aa4d4cb83
+crates/rpc/src/domain_details/wire.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(untagged)] enum DetailFrameReply |08db6f3d1e9945ea
+crates/rpc/src/domain_details/wire.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] #[serde(untagged)] enum DetailFrameRequest |4767e67f0075547a
+crates/rpc/src/domain_details/wire.rs [pub] impl DetailFrameReply :: fn validate(&self) -> Result<(), RpcError> |0161d662c52ed26c
+crates/rpc/src/domain_details/wire.rs [pub] impl DetailFrameRequest :: const fn capability(&self) -> &'static str |c54758bd754b6466
+crates/rpc/src/domain_details/wire.rs [pub] impl DetailFrameRequest :: fn validate(&self) -> Result<(), RpcError> |44f4398a1b215943
 crates/rpc/src/error.rs [priv] impl Error for RpcError
 crates/rpc/src/error.rs [priv] impl From<io::Error> for RpcError
 crates/rpc/src/error.rs [priv] impl From<io::Error> for RpcError :: fn from(value: io::Error) -> Self |c7e631f3e973887e
@@ -153,7 +358,7 @@ crates/rpc/src/generated.rs [pub] #[must_use] fn codegen_fingerprints_match() ->
 crates/rpc/src/handshake.rs [priv] const fn client_is_below_minimum(client: ProtocolVersion, minimum: ProtocolVersion) -> bool |1fc263e995cd1d0a
 crates/rpc/src/handshake.rs [priv] const fn negotiate_same_major_minor( client: ProtocolVersion, server: ProtocolVersion, ) -> ProtocolVersion |8a6be3ed01aa40bd
 crates/rpc/src/handshake.rs [priv] fn contains_capability(haystack: &[&str], needle: &str) -> bool |f52525c68cc35945
-crates/rpc/src/handshake.rs [priv] fn is_known_capability(capability: &str) -> bool |f8a36f16fb6c7480
+crates/rpc/src/handshake.rs [priv] fn is_known_capability(capability: &str) -> bool |c3026ce7fbdc98fe
 crates/rpc/src/handshake.rs [priv] fn policy_message(posture: &Posture) -> DataPosture |cd14d255d55de1b9
 crates/rpc/src/handshake.rs [priv] fn proto_version(version: ProtocolVersion) -> generated::ProtocolVersion |19dc41ca76aeb946
 crates/rpc/src/handshake.rs [priv] impl Default for ServerHandshakeConfig
@@ -176,7 +381,7 @@ crates/rpc/src/handshake.rs [pub] const READ_ONLY_CAPABILITY_IDS: &[&str] |8673b
 crates/rpc/src/handshake.rs [pub] const WRITE_CAPABILITY_IDS: &[&str] |c43db9f25dbdd42d
 crates/rpc/src/handshake.rs [pub] fn authorize_mutable_request( handshake: &ServerHandshake, request: &MutableRequest, ) -> Result<(), RpcError> |848b9f1833300c2f
 crates/rpc/src/handshake.rs [pub] fn expected_capability_for_command(command: &mutable_request::Command) -> &'static str |2d49a6cdbb9e791a
-crates/rpc/src/handshake.rs [pub] fn negotiate_handshake( client: &ClientHandshake, config: &ServerHandshakeConfig, ) -> Result<ServerHandshake, RpcError> |8a962a791063f26a
+crates/rpc/src/handshake.rs [pub] fn negotiate_handshake( client: &ClientHandshake, config: &ServerHandshakeConfig, ) -> Result<ServerHandshake, RpcError> |996634816005df3f
 crates/rpc/src/handshake.rs [pub] impl ServerHandshakeConfig :: #[must_use] fn with_posture(mut self, posture: Posture) -> Self |7e3eb8ed8e7e0b97
 crates/rpc/src/lib.rs [priv] #[cfg(test)] mod tests
 crates/rpc/src/lib.rs [priv] fn require_frame_class(actual: FrameClass, expected: FrameClass) -> Result<(), RpcError> |2b6186b5171493b2
@@ -197,6 +402,7 @@ crates/rpc/src/lib.rs [pub] fn encode_envelope_frame( envelope: &generated::Loca
 crates/rpc/src/lib.rs [pub] mod convert
 crates/rpc/src/lib.rs [pub] mod details
 crates/rpc/src/lib.rs [pub] mod digest
+crates/rpc/src/lib.rs [pub] mod domain_details
 crates/rpc/src/lib.rs [pub] mod error
 crates/rpc/src/lib.rs [pub] mod frame
 crates/rpc/src/lib.rs [pub] mod generated

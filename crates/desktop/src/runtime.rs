@@ -6,6 +6,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize)]
 #[serde(tag = "command", rename_all = "snake_case", deny_unknown_fields)]
 pub enum RuntimeCommand {
+    DetailsDomainReadV3 {
+        context: academic_rpc::domain_details::Context,
+        selector: academic_rpc::domain_details::DomainSelector,
+        query: academic_rpc::domain_details::Query,
+    },
     DetailsAudio {
         lecture_id: String,
         expected_profile_id: String,
@@ -39,9 +44,10 @@ pub enum RuntimeCommand {
 impl RuntimeCommand {
     fn desktop_command(self) -> Option<crate::DesktopCommand> {
         match self {
-            Self::DetailsRead { .. } | Self::DetailsDecide { .. } | Self::DetailsAudio { .. } => {
-                None
-            }
+            Self::DetailsDomainReadV3 { .. }
+            | Self::DetailsRead { .. }
+            | Self::DetailsDecide { .. }
+            | Self::DetailsAudio { .. } => None,
             Self::Diagnostics {} => Some(crate::DesktopCommand::Diagnostics),
             Self::SyntheticExport {} => Some(crate::DesktopCommand::SyntheticExport),
             Self::SyntheticIngest {} => Some(crate::DesktopCommand::SyntheticIngest(
@@ -72,6 +78,14 @@ pub struct RuntimeReply {
     pub receipt_id: Option<Vec<u8>>,
     #[serde(flatten)]
     pub detail_fields: Option<RuntimeDetailFields>,
+}
+
+/// V3 has its own closed reply; imported receipt fields never leak into it.
+#[derive(Debug, Serialize)]
+#[serde(untagged)]
+pub enum RuntimeResponse {
+    Imported(Box<RuntimeReply>),
+    Domain(academic_rpc::domain_details::DomainReadReply),
 }
 
 #[derive(Debug, Serialize)]
@@ -112,11 +126,29 @@ impl RuntimeReply {
 async fn desktop_request_v1(
     request: RuntimeRequest,
     client: tauri::State<'_, crate::local_client::LocalClient>,
-) -> Result<RuntimeReply, &'static str> {
+) -> Result<RuntimeResponse, &'static str> {
     if request.version != 1 {
         return Err("Unsupported desktop IPC version");
     }
-    match request.operation {
+    if let RuntimeCommand::DetailsDomainReadV3 {
+        context,
+        selector,
+        query,
+    } = request.operation
+    {
+        return Ok(RuntimeResponse::Domain(
+            client
+                .execute_domain_details(
+                    academic_rpc::domain_details::DomainReadRequest::DetailsDomainReadV3 {
+                        context,
+                        selector,
+                        query,
+                    },
+                )
+                .await,
+        ));
+    }
+    let reply = match request.operation {
         RuntimeCommand::DetailsAudio {
             lecture_id,
             expected_profile_id,
@@ -169,7 +201,8 @@ async fn desktop_request_v1(
                     .ok_or("Unsupported desktop command")?,
             )
             .await),
-    }
+    };
+    reply.map(|reply| RuntimeResponse::Imported(Box::new(reply)))
 }
 
 /// Starts one bundled local window with a fixed command manifest and no plugins.
@@ -207,6 +240,28 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::RuntimeRequest;
+
+    #[test]
+    fn domain_native_command_and_reply_keep_the_v3_boundary_closed()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut value = serde_json::json!({"version":1,"operation":{"command":"details_domain_read_v3",
+            "context":{"domain_id":"01900000-0000-7000-8000-000000000003","scope_id":"01900000-0000-7000-8000-000000000004"},
+            "selector":{"view":"domain_detail_v3","known_at_accept_seq":null,"valid_at_ms":50},
+            "query":{"kind":"index","surface":"concept"}}});
+        let _: RuntimeRequest = serde_json::from_value(value.clone())?;
+        value["operation"]["actor"] = serde_json::json!("not-allowed");
+        assert!(serde_json::from_value::<RuntimeRequest>(value).is_err());
+        let reply = super::RuntimeResponse::Domain(
+            academic_rpc::domain_details::DomainReadReply::unavailable(
+                academic_rpc::domain_details::ReadFailure::CapabilityUnavailable,
+            ),
+        );
+        assert_eq!(
+            serde_json::to_value(reply)?,
+            serde_json::json!({"version":1,"state":"unavailable","schema_version":3,"reason":"CAPABILITY_UNAVAILABLE","projection":null})
+        );
+        Ok(())
+    }
 
     #[test]
     fn detail_commands_require_profile_revision_identity_and_closed_selectors()

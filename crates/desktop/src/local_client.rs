@@ -209,7 +209,48 @@ impl LocalClient {
         &self,
         request: academic_rpc::details::DetailRequest,
     ) -> Result<RuntimeReply, Box<dyn std::error::Error + Send + Sync>> {
+        let academic_rpc::domain_details::wire::DetailFrameReply::Imported(reply) = self
+            .exchange_detail_frame(
+                &academic_rpc::domain_details::wire::DetailFrameRequest::Imported(request.clone()),
+            )
+            .await?
+        else {
+            return Err("Wrong imported detail response".into());
+        };
+        self.imported_reply(request, *reply)
+    }
+
+    pub async fn execute_domain_details(
+        &self,
+        request: academic_rpc::domain_details::DomainReadRequest,
+    ) -> academic_rpc::domain_details::DomainReadReply {
+        use academic_rpc::domain_details::{
+            DomainReadReply, ReadFailure,
+            wire::{DetailFrameReply, DetailFrameRequest},
+        };
+        if request.validate().is_err() {
+            return DomainReadReply::unavailable(ReadFailure::UnsupportedQuery);
+        }
+        let frame = DetailFrameRequest::Domain(request.clone());
+        match tokio::time::timeout(Duration::from_secs(10), self.exchange_detail_frame(&frame))
+            .await
+        {
+            Ok(Ok(DetailFrameReply::Domain(reply))) if reply.validate_for(&request).is_ok() => {
+                reply
+            }
+            _ => DomainReadReply::unavailable(ReadFailure::CapabilityUnavailable),
+        }
+    }
+
+    async fn exchange_detail_frame(
+        &self,
+        request: &academic_rpc::domain_details::wire::DetailFrameRequest,
+    ) -> Result<
+        academic_rpc::domain_details::wire::DetailFrameReply,
+        Box<dyn std::error::Error + Send + Sync>,
+    > {
         use academic_rpc::details as dto;
+        request.validate()?;
         let contents = self.session()?;
         let (endpoint, nonce) = parse_session(&contents)?;
         let mut stream = connect(endpoint).await?;
@@ -271,8 +312,18 @@ impl LocalClient {
         else {
             return Err("Wrong detail response".into());
         };
-        let reply: dto::DetailReply = dto::decode(&frame.canonical_json)?;
+        let reply: academic_rpc::domain_details::wire::DetailFrameReply =
+            dto::decode(&frame.canonical_json)?;
         reply.validate()?;
+        Ok(reply)
+    }
+
+    fn imported_reply(
+        &self,
+        request: academic_rpc::details::DetailRequest,
+        reply: academic_rpc::details::DetailReply,
+    ) -> Result<RuntimeReply, Box<dyn std::error::Error + Send + Sync>> {
+        use academic_rpc::details as dto;
         if reply.version != 1 {
             return Err("Wrong detail response version".into());
         }
