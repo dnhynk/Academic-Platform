@@ -9,18 +9,21 @@ publish.workspace = true
 [[bin]]
 name = "academicd"
 path = "src/main.rs"
+required-features = ["plaintext-daemon"]
 
 [features]
-default = []
+default = ["plaintext-daemon"]
+plaintext-daemon = ["academic-core/plaintext-core", "academic-store/bundled-sqlite"]
+encrypted-synthetic-daemon = ["academic-core/encrypted-synthetic-core", "academic-store/sqlcipher-store"]
 # Compiles the X1 exit harness lane. It forwards to the crates that own
 # the named failpoints and is never selected by a default build.
-phase1-fault-injection = ["academic-core/phase1-fault-injection"]
+phase1-fault-injection = ["plaintext-daemon", "academic-core/phase1-fault-injection"]
 
 [dependencies]
 academic-admission = { path = "../admission" }
-academic-core = { path = "../core" }
+academic-core = { path = "../core", default-features = false }
 academic-rpc = { path = "../rpc" }
-academic-store = { path = "../store" }
+academic-store = { path = "../store", default-features = false }
 getrandom.workspace = true
 hex.workspace = true
 sha2.workspace = true
@@ -68,3 +71,39 @@ all = { level = "deny", priority = -1 }
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
+
+[[test]]
+name = "availability"
+required-features = ["plaintext-daemon"]
+
+[[test]]
+name = "backpressure"
+required-features = ["plaintext-daemon"]
+
+[[test]]
+name = "details"
+required-features = ["plaintext-daemon"]
+
+[[test]]
+name = "domain_details"
+required-features = ["plaintext-daemon"]
+
+[[test]]
+name = "multiclient"
+required-features = ["plaintext-daemon"]
+
+[[test]]
+name = "phase1_exit"
+required-features = ["plaintext-daemon"]
+
+[[test]]
+name = "singleton"
+required-features = ["plaintext-daemon"]
+
+[[test]]
+name = "unix_socket"
+required-features = ["plaintext-daemon"]
+
+[[test]]
+name = "windows_pipe"
+required-features = ["plaintext-daemon"]

@@ -1,81 +1,18 @@
 //! Composition root for authenticated durable acceptance.
 
-use std::{error::Error, fmt};
+use std::fmt;
 
-use academic_contracts::{ContractError, DeviceAuthorization, verify_signed_batch};
+use academic_contracts::DeviceAuthorization;
 use academic_domain::TimestampMillis;
 use academic_store::{
-    accept::{AcceptError, AcceptanceOutcome, AcceptanceStore},
-    error::StoreError,
-    fault::{AcceptanceFaultInjector, AcceptanceFaultPoint, InjectedFault, NoFault},
+    accept::{AcceptanceOutcome, AcceptanceStore},
+    fault::{AcceptanceFaultInjector, NoFault},
     idempotency::AcceptanceCommand,
     profile::SyntheticProfile,
 };
-use academic_vault::{DomainKeyring, Vault, VaultError};
+use academic_vault::{DomainKeyring, Vault};
 
-/// Authentication or durable-store failure at the local core boundary.
-#[derive(Debug)]
-pub enum ServiceError {
-    Contract(ContractError),
-    Store(StoreError),
-    Vault(VaultError),
-    Acceptance(AcceptError),
-    Injected(InjectedFault),
-}
-
-impl fmt::Display for ServiceError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Contract(error) => write!(formatter, "signed acceptance rejected: {error}"),
-            Self::Store(error) => write!(formatter, "acceptance store could not open: {error}"),
-            Self::Vault(error) => write!(formatter, "acceptance vault could not open: {error}"),
-            Self::Acceptance(error) => write!(formatter, "durable acceptance rejected: {error}"),
-            Self::Injected(error) => write!(formatter, "{error}"),
-        }
-    }
-}
-
-impl Error for ServiceError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            Self::Contract(error) => Some(error),
-            Self::Store(error) => Some(error),
-            Self::Vault(error) => Some(error),
-            Self::Acceptance(error) => Some(error),
-            Self::Injected(error) => Some(error),
-        }
-    }
-}
-
-impl From<ContractError> for ServiceError {
-    fn from(error: ContractError) -> Self {
-        Self::Contract(error)
-    }
-}
-
-impl From<StoreError> for ServiceError {
-    fn from(error: StoreError) -> Self {
-        Self::Store(error)
-    }
-}
-
-impl From<VaultError> for ServiceError {
-    fn from(error: VaultError) -> Self {
-        Self::Vault(error)
-    }
-}
-
-impl From<AcceptError> for ServiceError {
-    fn from(error: AcceptError) -> Self {
-        Self::Acceptance(error)
-    }
-}
-
-impl From<InjectedFault> for ServiceError {
-    fn from(error: InjectedFault) -> Self {
-        Self::Injected(error)
-    }
-}
+pub use crate::authenticated_acceptance::ServiceError;
 
 /// Single-owner local composition of the concrete vault and the only canonical writer.
 ///
@@ -161,16 +98,14 @@ impl AcceptanceService {
     where
         F: AcceptanceFaultInjector,
     {
-        let verified = verify_signed_batch(command.envelope_bytes, authorization)?;
-        let outcome = self.store.accept_verified_batch_with_faults(
-            &verified,
+        crate::authenticated_acceptance::accept_signed_command(
+            &mut self.store,
+            crate::authenticated_acceptance::VaultAccess::Plain(&self.vault),
             command,
+            authorization,
             accepted_at,
-            &self.vault,
             faults,
-        )?;
-        faults.hit(AcceptanceFaultPoint::Ipc02)?;
-        Ok(outcome)
+        )
     }
 }
 
@@ -186,13 +121,16 @@ mod tests {
         sync::atomic::{AtomicU64, Ordering},
     };
 
+    use academic_contracts::verify_signed_batch;
     use academic_domain::{
         Actor, BatchId, DeviceId, DomainError, DomainId, EntityId, Event, EventId, EventPayload,
         ScopeDescriptor, ScopeId, UnsignedBatch,
     };
     use academic_ledger::EVENT_SCHEMA_VERSION;
     use academic_store::{
+        accept::AcceptError,
         connection::open_reader,
+        fault::{AcceptanceFaultPoint, InjectedFault},
         path_policy::NativePathProbe,
         profile::{SyntheticProfile, create_synthetic_profile, open_synthetic_profile},
         queries::canonical_snapshot,

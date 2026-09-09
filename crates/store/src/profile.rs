@@ -233,25 +233,44 @@ impl SyntheticProfile {
     /// Durable local incarnation for pending desktop operations. Ordinary restore
     /// copies canonical state, not this local metadata. This is not a key.
     pub fn detail_incarnation(&self) -> StoreResult<[u8; 32]> {
-        let path = self.root.join("detail-incarnation.v1");
-        if !path
-            .try_exists()
-            .map_err(|e| StoreError::io("inspect detail incarnation", &path, e))?
-        {
-            let random: Vec<u8> =
-                self.open_reader()?
-                    .query_row("SELECT randomblob(32)", [], |row| row.get(0))?;
-            match write_new_synced_file(&path, &random) {
-                Ok(()) => sync_directory(&self.root)?,
-                Err(StoreError::Io { source, .. })
-                    if source.kind() == std::io::ErrorKind::AlreadyExists => {}
-                Err(error) => return Err(error),
-            }
-        }
-        academic_store_platform::read_detail_incarnation(&self.root).map_err(|e| {
-            StoreError::io("read detail incarnation without following links", &path, e)
+        detail_incarnation(&self.root, || {
+            self.open_reader()?
+                .query_row("SELECT randomblob(32)", [], |row| row.get(0))
         })
     }
+}
+
+/// Shared local correlation metadata; callers admit the physical profile first.
+/// The callback supplies only random metadata, never a writer or authorization.
+pub(crate) fn detail_incarnation(
+    root: &Path,
+    random: impl FnOnce() -> StoreResult<Vec<u8>>,
+) -> StoreResult<[u8; 32]> {
+    let path = root.join("detail-incarnation.v1");
+    if !path
+        .try_exists()
+        .map_err(|e| StoreError::io("inspect detail incarnation", &path, e))?
+    {
+        let random = random()?;
+        match write_new_synced_file(&path, &random) {
+            Ok(()) => sync_directory(root)?,
+            Err(StoreError::Io { source, .. })
+                if source.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error),
+        }
+    }
+    read_detail_incarnation(root)
+}
+
+/// Reads existing local metadata without minting or repairing its identity.
+pub(crate) fn read_detail_incarnation(root: &Path) -> StoreResult<[u8; 32]> {
+    academic_store_platform::read_detail_incarnation(root).map_err(|e| {
+        StoreError::io(
+            "read detail incarnation without following links",
+            root.join("detail-incarnation.v1"),
+            e,
+        )
+    })
 }
 
 /// Creates a secure root and writes the incomplete marker before any database work.

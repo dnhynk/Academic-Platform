@@ -92,6 +92,8 @@ const CRATES_ROOT = join(REPOSITORY_ROOT, "crates");
 
 /** Types known to carry key material or decrypted plaintext, and why. */
 const SECRET_BEARING_TYPES = new Map([
+  ["EncryptedProfileSession", "the owned store key and same-root encrypted domain vault"],
+  ["EncryptedReaderFactory", "a borrow of the concrete keyed session"],
   ["Excerpt", "verified source text in the bounded domain detail reply"],
   ["DomainTranscriptSegment", "verbatim and corrected domain transcript text with exact source mapping"],
   ["ByteExcerpt", "original source bytes in the bounded domain detail reply"],
@@ -349,6 +351,7 @@ const BYTE_CLASSES = new Map([
 const SECRET_BYTE_CLASSES = new Set(["key-material", "content"]);
 
 const BYTE_FIELD_CLASSES = new Map([
+  ["EncryptedProfileSession.incarnation", "identifier"],
   ["ByteExcerpt.bytes", "content"],
   ["DetailAudio.bytes", "content"],
   ["DetailDecisionRequest.client_instance_id", "identifier"],

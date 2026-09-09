@@ -24,6 +24,7 @@ members = [
   "crates/domain",
   "crates/egress",
   "crates/egress-boundary",
+  "crates/encrypted-session-tests",
   "crates/evidence-center",
   "crates/export",
   "crates/export-job",
