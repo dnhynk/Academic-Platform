@@ -543,6 +543,31 @@ impl DomainProjection {
                 if detail.subject().context() != context || detail.subject().surface() != surface {
                     return Err(invalid("detail subject kind mismatch"));
                 }
+                if let DomainDetail::Project {
+                    files: Field::Available { value: files, .. },
+                    ..
+                } = detail.as_ref()
+                {
+                    for file in files {
+                        if let Field::Available { value: excerpt, .. } = &file.source_excerpt {
+                            let span = excerpt
+                                .end
+                                .checked_sub(excerpt.start)
+                                .ok_or_else(|| invalid("reversed source excerpt range"))?;
+                            let byte_count = u64::try_from(excerpt.bytes.len())
+                                .map_err(|_| invalid("source excerpt length overflow"))?;
+                            let file_length = file
+                                .byte_length
+                                .0
+                                .parse::<u64>()
+                                .map_err(|_| invalid("invalid source file byte length"))?;
+                            // ByteExcerpt permits contained empty spans, unlike evidence locators.
+                            if span != byte_count || excerpt.end > file_length {
+                                return Err(invalid("source excerpt range or length mismatch"));
+                            }
+                        }
+                    }
+                }
                 let mut groups = BTreeSet::new();
                 for group in detail.groups() {
                     if !groups.insert(group.kind) {
@@ -713,6 +738,16 @@ fn inspect(
                 {
                     *excerpt_bytes = excerpt_bytes
                         .checked_add(text.len())
+                        .ok_or_else(|| invalid("excerpt byte overflow"))?;
+                }
+                if key == "source_excerpt"
+                    && let Some(bytes) = value
+                        .get("value")
+                        .and_then(|v| v.get("bytes"))
+                        .and_then(Value::as_array)
+                {
+                    *excerpt_bytes = excerpt_bytes
+                        .checked_add(bytes.len())
                         .ok_or_else(|| invalid("excerpt byte overflow"))?;
                 }
                 inspect(value, entries, refs, excerpt_bytes)?;

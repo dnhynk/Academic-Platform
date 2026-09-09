@@ -262,3 +262,216 @@ fn relation_group_preserves_its_subject_and_selected_predicate() -> TestResult {
     assert!(checked(value).is_err());
     Ok(())
 }
+
+// These are codec-shaped DTOs, not accepted canonical sources or Project producers.
+fn project_with_files(files: Vec<Value>) -> Value {
+    let mut value = projection();
+    let missing = json!({"state":"unavailable","reason":"PRODUCER_NOT_CONNECTED","source_ids":[]});
+    value["projection"]["result"] = json!({"kind":"detail","detail":{
+        "kind":"project","subject":{"kind":"project","domain_id":DOMAIN,"scope_id":SCOPE,"entity_id":ENTITY},
+        "title":missing,"goals":missing,"analyzed_snapshot":missing,"current_snapshot":missing,
+        "relation_groups":[],"files":{"state":"available","value":files,"provenance_refs":["event"]},
+        "analyze":{"state":"unavailable","reason":"ANALYSIS_DISPATCH_NOT_CONNECTED"},
+        "provider_preview":{"state":"unavailable","reason":"POLICY_STAGING_NOT_CONNECTED"}
+    }});
+    value
+}
+
+fn source_file(index: usize, file_length: u64, start: u64, end: u64, bytes: Vec<u8>) -> Value {
+    json!({"path":format!("file-{index}.txt"),"content_digest":"a".repeat(64),
+        "byte_length":file_length.to_string(),
+        "source_excerpt":{"state":"available","provenance_refs":["event"],
+            "value":{"start":start,"end":end,"bytes":bytes}}})
+}
+
+fn full_file_excerpts(count: usize) -> Vec<Value> {
+    (0..count)
+        .map(|index| source_file(index, 4096, 0, 4096, vec![0; 4096]))
+        .collect()
+}
+
+fn add_text_excerpts(value: &mut Value, texts: &[String]) {
+    value["projection"]["provenance"][1]["origin"]["evidence"] = json!(texts.iter().map(|text| {
+        json!({"evidence_id":ENTITY,"artifact_id":EVENT,"representation_index":0,
+            "locator":{"kind":"TEXT_BYTES","source_digest":"a".repeat(64),"start":0,"end":text.len()},
+            "excerpt_digest":"a".repeat(64),"role":"SUPPORTS","strength":"DIRECT",
+            "extraction_method":"codec-only","extractor_version":"1",
+            "excerpt":{"state":"available","value":{"text":text,"encoding":"UTF-8"},"provenance_refs":["event"]}})
+    }).collect::<Vec<_>>());
+}
+
+fn assert_project_validation(value: Value, valid: bool) -> TestResult {
+    let typed: DomainReadReply = serde_json::from_value(value)?;
+    // Generic framing must succeed: the domain contract, rather than another
+    // frame/list/string bound, must discriminate these cases.
+    let frame = encode(&typed)?;
+    assert!(frame.len() < academic_rpc::details::MAX_DETAIL_BYTES);
+    let reply: DomainReadReply = decode(&frame)?;
+    assert_eq!(reply, typed);
+    let DomainReadReply::Ready { projection, .. } = &reply else {
+        return Err("expected ready-shaped codec DTO".into());
+    };
+    let request: DomainReadRequest = serde_json::from_value(json!({
+        "command":"details_domain_read_v3","context":{"domain_id":DOMAIN,"scope_id":SCOPE},
+        "selector":{"view":"domain_detail_v3","known_at_accept_seq":7,"valid_at_ms":50},
+        "query":{"kind":"detail","subject":{"kind":"project","domain_id":DOMAIN,"scope_id":SCOPE,"entity_id":ENTITY}}
+    }))?;
+    request.validate()?;
+    let frame_reply: DetailFrameReply = decode(&encode(&DetailFrameReply::Domain(reply.clone()))?)?;
+    // Evaluate each public entry point even if an earlier one disagrees.
+    let outcomes = [
+        projection.validate().is_ok(),
+        reply.validate().is_ok(),
+        reply.validate_for(&request).is_ok(),
+        frame_reply.validate().is_ok(),
+        DomainReadReply::ready(projection.as_ref().clone()).is_ok(),
+    ];
+    assert_eq!(
+        outcomes, [valid; 5],
+        "projection/reply/request-bound/frame/ready validation"
+    );
+    Ok(())
+}
+
+#[test]
+fn source_excerpt_valid_bytes_and_file_boundaries_are_lossless() -> TestResult {
+    assert_project_validation(
+        project_with_files(vec![
+            source_file(0, 4096, 0, 4096, vec![0; 4096]),
+            source_file(1, 4096, 4092, 4096, vec![0, 127, 128, 255]),
+            source_file(2, 10, 3, 5, vec![255, 0]),
+        ]),
+        true,
+    )
+}
+
+#[test]
+fn source_excerpt_binary_total_accepts_exact_262144_bytes() -> TestResult {
+    assert_eq!(MAX_EXCERPT_BYTES, 262_144);
+    assert_project_validation(project_with_files(full_file_excerpts(64)), true)
+}
+
+#[test]
+fn source_excerpt_binary_total_refuses_262145_bytes() -> TestResult {
+    let mut files = full_file_excerpts(64);
+    files.push(source_file(64, 1, 0, 1, vec![0]));
+    assert_project_validation(project_with_files(files), false)
+}
+
+#[test]
+fn source_excerpt_binary_total_refuses_review_65_file_case() -> TestResult {
+    assert_project_validation(project_with_files(full_file_excerpts(65)), false)
+}
+
+#[test]
+fn source_excerpt_mixed_utf8_and_binary_total_accepts_exact_262144_bytes() -> TestResult {
+    let mut value = project_with_files(full_file_excerpts(63));
+    let texts = ["é".repeat(1024), "한".repeat(682) + "ab"];
+    assert_eq!(texts.iter().map(String::len).sum::<usize>(), 4096);
+    add_text_excerpts(&mut value, &texts);
+    assert_project_validation(value, true)
+}
+
+#[test]
+fn source_excerpt_mixed_utf8_and_binary_total_refuses_262145_bytes() -> TestResult {
+    let mut value = project_with_files(full_file_excerpts(63));
+    add_text_excerpts(&mut value, &["é".repeat(1024), "한".repeat(682) + "abc"]);
+    assert_project_validation(value, false)
+}
+
+#[test]
+fn source_excerpt_text_only_budget_keeps_its_exact_boundary() -> TestResult {
+    let texts = vec!["a".repeat(65_536); 4];
+    let mut value = project_with_files(vec![source_file(0, 0, 0, 0, vec![])]);
+    add_text_excerpts(&mut value, &texts);
+    assert_project_validation(value.clone(), true)?;
+    let mut over = texts;
+    over.push("a".to_owned());
+    add_text_excerpts(&mut value, &over);
+    assert_project_validation(value, false)
+}
+
+#[test]
+fn source_excerpt_reversed_range_is_refused() -> TestResult {
+    assert_project_validation(
+        project_with_files(vec![source_file(0, 4096, 9, 8, vec![0])]),
+        false,
+    )
+}
+
+#[test]
+fn source_excerpt_length_mismatch_is_refused() -> TestResult {
+    assert_project_validation(
+        project_with_files(vec![source_file(0, 4096, 0, 2, vec![0])]),
+        false,
+    )
+}
+
+#[test]
+fn source_excerpt_past_file_end_is_refused() -> TestResult {
+    assert_project_validation(
+        project_with_files(vec![source_file(0, 4096, 4095, 4097, vec![0; 2])]),
+        false,
+    )
+}
+
+#[test]
+fn source_excerpt_empty_ranges_remain_valid_when_contained() -> TestResult {
+    assert_project_validation(
+        project_with_files(vec![
+            source_file(0, 0, 0, 0, vec![]),
+            source_file(1, 4096, 0, 0, vec![]),
+            source_file(2, 4096, 17, 17, vec![]),
+            source_file(3, 4096, 4096, 4096, vec![]),
+        ]),
+        true,
+    )
+}
+
+#[test]
+fn source_excerpt_empty_range_beyond_eof_is_refused() -> TestResult {
+    assert_project_validation(
+        project_with_files(vec![source_file(0, 4096, 4097, 4097, vec![])]),
+        false,
+    )
+}
+
+#[test]
+fn source_excerpt_empty_range_with_bytes_is_refused() -> TestResult {
+    assert_project_validation(
+        project_with_files(vec![source_file(0, 4096, 0, 0, vec![0])]),
+        false,
+    )
+}
+
+#[test]
+fn source_excerpt_exact_integer_bounds_and_unavailable_sources_are_preserved() -> TestResult {
+    let safe = academic_rpc::details::MAX_SAFE_INTEGER;
+    let mut value = project_with_files(vec![source_file(0, u64::MAX, safe - 1, safe, vec![0])]);
+    assert_project_validation(value.clone(), true)?;
+    value["projection"]["result"]["detail"]["files"]["value"][0]["byte_length"] =
+        json!((safe - 1).to_string());
+    assert_project_validation(value.clone(), false)?;
+    value["projection"]["result"]["detail"]["files"]["value"][0]["source_excerpt"] = json!({
+        "state":"unavailable","reason":"SOURCE_BODY_UNAVAILABLE","source_ids":[]
+    });
+    assert_project_validation(value, true)?;
+    let unsafe_number = project_with_files(vec![source_file(0, u64::MAX, safe, safe + 1, vec![0])]);
+    let reply: DomainReadReply = serde_json::from_value(unsafe_number)?;
+    assert!(encode(&reply).is_err());
+    assert!(reply.validate().is_err());
+    Ok(())
+}
+
+#[test]
+fn source_excerpt_validation_keeps_provenance_and_context_checks() -> TestResult {
+    let value = project_with_files(vec![source_file(0, 1, 0, 1, vec![0])]);
+    assert_project_validation(value.clone(), true)?;
+    let mut missing_ref = value.clone();
+    missing_ref["projection"]["result"]["detail"]["files"]["value"][0]["source_excerpt"]["provenance_refs"] =
+        json!(["missing"]);
+    assert_project_validation(missing_ref, false)?;
+    let mut wrong_scope = value;
+    wrong_scope["projection"]["result"]["detail"]["subject"]["scope_id"] = json!(ENTITY);
+    assert_project_validation(wrong_scope, false)
+}

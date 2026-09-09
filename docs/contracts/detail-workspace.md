@@ -223,6 +223,15 @@ have a 262144-byte total ceiling under the existing 1 MiB frame, depth 24,
 coordinates must be JavaScript-safe; signed/unsigned full-width coordinates
 use canonical decimal strings. Bounds refuse instead of truncating or rounding.
 
+The excerpt ceiling counts UTF-8 bytes in every evidence `excerpt` together
+with raw bytes in every file `source_excerpt`. An available `ByteExcerpt`
+uses an ordered half-open range whose span equals its byte-vector length and
+whose end is within the declared file byte length. Contained empty ranges keep
+their existing meaning: `start == end` with no bytes is valid, including `0..0`
+for an empty file and `EOF..EOF`; an empty range beyond EOF is invalid. This
+does not change the separate nonempty evidence-locator requirement or establish
+source authority for a structurally valid DTO.
+
 The new RPC structs reuse the existing dependencies. The source-policy inventory
 adds only the closed read DTO roots, redacted excerpt/document/transcript content
 and the isolated test path. No scanner rule or discovery floor is weakened.

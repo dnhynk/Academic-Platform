@@ -286,7 +286,7 @@ crates/rpc/src/domain_details.rs [pub] impl<T> Field<T> :: fn available(value: T
 crates/rpc/src/domain_details.rs [pub] impl<T> Field<T> :: fn unavailable(reason: MissingReason, source_ids: Vec<OriginalId>) -> Self |68f311cbec12679c
 crates/rpc/src/domain_details.rs [pub] mod wire
 crates/rpc/src/domain_details/validation.rs [priv] fn generation(id: &str) -> Result<(), RpcError> |33d5a556dbfeb3a4
-crates/rpc/src/domain_details/validation.rs [priv] fn inspect( value: &Value, entries: &BTreeMap<&str, &ProvenanceEntry>, refs: &mut BTreeSet<String>, excerpt_bytes: &mut usize, ) -> Result<(), RpcError> |9120351fb0bddb55
+crates/rpc/src/domain_details/validation.rs [priv] fn inspect( value: &Value, entries: &BTreeMap<&str, &ProvenanceEntry>, refs: &mut BTreeSet<String>, excerpt_bytes: &mut usize, ) -> Result<(), RpcError> |ca02eb60fbff5e0f
 crates/rpc/src/domain_details/validation.rs [priv] fn origin_field( field: &Field<OriginEvent>, sequence: u64, scope: Option<ScopeId>, event_id: Option<EventId>, entries: &BTreeMap<&str, &ProvenanceEntry>, ) -> Result<(), RpcError> |5a24a96d1aa6b148
 crates/rpc/src/domain_details/validation.rs [priv] fn validate_actor(actor: &ActorRef) -> Result<(), RpcError> |0444a12d494fe1dd
 crates/rpc/src/domain_details/validation.rs [priv] fn validate_evidence(item: &EvidenceRef) -> Result<(), RpcError> |6cd0676898062f2b
@@ -294,7 +294,7 @@ crates/rpc/src/domain_details/validation.rs [priv] fn visit( reference: &str, gr
 crates/rpc/src/domain_details/validation.rs [priv] impl DomainDetail
 crates/rpc/src/domain_details/validation.rs [priv] impl DomainProjection
 crates/rpc/src/domain_details/validation.rs [priv] impl DomainProjection :: fn validate_origin( &self, entry: &ProvenanceEntry, entries: &BTreeMap<&str, &ProvenanceEntry>, sources: &BTreeMap<&str, &ReadSource>, ) -> Result<(), RpcError> |5b4e707c13fd90f7
-crates/rpc/src/domain_details/validation.rs [priv] impl DomainProjection :: fn validate_result(&self, entries: &BTreeMap<&str, &ProvenanceEntry>) -> Result<(), RpcError> |ba4388b08ca03bb9
+crates/rpc/src/domain_details/validation.rs [priv] impl DomainProjection :: fn validate_result(&self, entries: &BTreeMap<&str, &ProvenanceEntry>) -> Result<(), RpcError> |a0e94d0dad967287
 crates/rpc/src/domain_details/validation.rs [priv] impl DomainReadReply
 crates/rpc/src/domain_details/validation.rs [priv] impl DomainReadRequest
 crates/rpc/src/domain_details/validation.rs [priv] impl Subject
