@@ -276,15 +276,37 @@ pub(super) fn seal(
     secret: &[u8],
     operation: &'static str,
 ) -> Result<Vec<u8>, KeystoreError> {
+    let blob = prepare(label, operation)?;
+    let payload = crate::decode_envelope(&blob, operation)?;
+    seal_prepared(label, payload, secret, operation)?;
+    Ok(blob)
+}
+
+pub(super) fn prepare(
+    label: &KeystoreLabel,
+    operation: &'static str,
+) -> Result<Vec<u8>, KeystoreError> {
     require_background_thread(operation)?;
     let mut generation = [0; macos_blob::GENERATION_BYTES];
     getrandom::fill(&mut generation)
         .map_err(|_| failure(KeystoreErrorCode::Unavailable, operation))?;
-    let blob = encode_envelope(PROVIDER, &macos_blob::encode(label, &generation));
+    Ok(encode_envelope(
+        PROVIDER,
+        &macos_blob::encode(label, &generation),
+    ))
+}
+
+pub(super) fn seal_prepared(
+    label: &KeystoreLabel,
+    payload: &[u8],
+    secret: &[u8],
+    operation: &'static str,
+) -> Result<(), KeystoreError> {
+    let generation = macos_blob::decode(label, payload, operation)?;
+    require_background_thread(operation)?;
     autoreleasepool(|_| {
-        let query = query(label, &generation, Some(secret), false, operation)?;
-        add(&query, operation)?;
-        Ok(blob)
+        let query = query(label, generation, Some(secret), false, operation)?;
+        add(&query, operation)
     })
 }
 

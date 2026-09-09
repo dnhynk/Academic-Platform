@@ -97,22 +97,39 @@ crates/crypto/src/keystore.rs [priv] mod platform :: fn translate(error: &native
 crates/crypto/src/keystore.rs [priv] mod platform :: impl DeviceKeystore for PlatformKeystore
 crates/crypto/src/keystore.rs [priv] mod platform :: impl DeviceKeystore for PlatformKeystore :: fn open(&self, label: &str, blob: &[u8]) -> Result<Zeroizing<Vec<u8>>, KeystoreFailure> |b06328aacca66425
 crates/crypto/src/keystore.rs [priv] mod platform :: impl DeviceKeystore for PlatformKeystore :: fn provider(&self) -> &str |e7bc2289d3ef09dc
+crates/crypto/src/keystore.rs [priv] mod platform :: impl DeviceKeystore for PlatformKeystore :: fn requires_publication_journal(&self) -> bool |7b0bdf7df30ef1d6
 crates/crypto/src/keystore.rs [priv] mod platform :: impl DeviceKeystore for PlatformKeystore :: fn seal(&self, label: &str, secret: &[u8]) -> Result<Vec<u8>, KeystoreFailure> |527879e522bf2add
 crates/crypto/src/keystore.rs [priv] mod platform :: impl PlatformKeystore
+crates/crypto/src/keystore.rs [priv] mod platform :: impl PreparedDeviceSeal for PlatformPreparedSeal
+crates/crypto/src/keystore.rs [priv] mod platform :: impl PreparedDeviceSeal for PlatformPreparedSeal :: fn blob(&self) -> &[u8] |382c26e1f6f1b283
+crates/crypto/src/keystore.rs [priv] mod platform :: impl PreparedDeviceSeal for PlatformPreparedSeal :: fn seal(self, secret: &[u8]) -> Result<(), KeystoreFailure> |1a2d124bf2741ec9
+crates/crypto/src/keystore.rs [priv] mod platform :: impl RecoverableDeviceKeystore for PlatformKeystore
+crates/crypto/src/keystore.rs [priv] mod platform :: impl RecoverableDeviceKeystore for PlatformKeystore :: fn prepare_seal(&self, label: &str) -> Result<Self::PreparedSeal, KeystoreFailure> |921d5f433ab0b96d
+crates/crypto/src/keystore.rs [priv] mod platform :: impl RecoverableDeviceKeystore for PlatformKeystore :: fn purge_incomplete(&self, label: &str, blob: &[u8]) -> Result<bool, KeystoreFailure> |1daacddfd6e12b5c
+crates/crypto/src/keystore.rs [priv] mod platform :: impl RecoverableDeviceKeystore for PlatformKeystore :: type PreparedSeal = PlatformPreparedSeal |ee022eabcef8a650
 crates/crypto/src/keystore.rs [priv] mod platform :: use academic_keystore_platform as native |d6c9c213effcc8be
-crates/crypto/src/keystore.rs [priv] mod platform :: use super::{DeviceKeystore, KeystoreFailure} |aae8eeda62a16cbc
+crates/crypto/src/keystore.rs [priv] mod platform :: use super::{DeviceKeystore, KeystoreFailure, PreparedDeviceSeal, RecoverableDeviceKeystore} |e4c3dffdbc275c00
 crates/crypto/src/keystore.rs [priv] mod platform :: use zeroize::Zeroizing |df92b00a7874c4a0
 crates/crypto/src/keystore.rs [priv] trait DeviceKeystore :: fn open(&self, label: &str, blob: &[u8]) -> Result<Zeroizing<Vec<u8>>, KeystoreFailure> |451e909dadac16a6
 crates/crypto/src/keystore.rs [priv] trait DeviceKeystore :: fn provider(&self) -> &str |5be56b5cffe6e792
+crates/crypto/src/keystore.rs [priv] trait DeviceKeystore :: fn requires_publication_journal(&self) -> bool |2b0fe2449270aaa5
 crates/crypto/src/keystore.rs [priv] trait DeviceKeystore :: fn seal(&self, label: &str, secret: &[u8]) -> Result<Vec<u8>, KeystoreFailure> |cebf51103797ee23
+crates/crypto/src/keystore.rs [priv] trait PreparedDeviceSeal :: fn blob(&self) -> &[u8] |6fc382b044230f98
+crates/crypto/src/keystore.rs [priv] trait PreparedDeviceSeal :: fn seal(self, secret: &[u8]) -> Result<(), KeystoreFailure> |94c6618656d1e73e
+crates/crypto/src/keystore.rs [priv] trait RecoverableDeviceKeystore: DeviceKeystore :: fn prepare_seal(&self, label: &str) -> Result<Self::PreparedSeal, KeystoreFailure> |a6f995342c7773e9
+crates/crypto/src/keystore.rs [priv] trait RecoverableDeviceKeystore: DeviceKeystore :: fn purge_incomplete(&self, label: &str, blob: &[u8]) -> Result<bool, KeystoreFailure> |9cd72a455b428f8c
+crates/crypto/src/keystore.rs [priv] trait RecoverableDeviceKeystore: DeviceKeystore :: type PreparedSeal: PreparedDeviceSeal |4463e3f29cbb7e84
 crates/crypto/src/keystore.rs [priv] use core::fmt |60337ade2d1be0ef
 crates/crypto/src/keystore.rs [priv] use zeroize::Zeroizing |df92b00a7874c4a0
-crates/crypto/src/keystore.rs [pub] #[cfg(feature = "os-keystore")] use platform::{PlatformKeystore, purge} |ba002378b261c716
+crates/crypto/src/keystore.rs [pub] #[cfg(feature = "os-keystore")] use platform::{PlatformKeystore, PlatformPreparedSeal, purge} |be3f3449cb6895e9
 crates/crypto/src/keystore.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] #[non_exhaustive] enum KeystoreFailure |2b09ea05bddc49a6
+crates/crypto/src/keystore.rs [pub] mod platform :: #[derive(Debug)] struct PlatformPreparedSeal(native::PreparedSeal) |4c40d3999c2846e5
 crates/crypto/src/keystore.rs [pub] mod platform :: #[derive(Debug, Clone, Copy, Default)] #[non_exhaustive] struct PlatformKeystore |a82b1f071adeac5f
 crates/crypto/src/keystore.rs [pub] mod platform :: fn purge(label: &str, blob: &[u8]) -> Result<bool, KeystoreFailure> |ffd78e919fc290a5
 crates/crypto/src/keystore.rs [pub] mod platform :: impl PlatformKeystore :: #[must_use] const fn new() -> Self |b9d2c925d16ed005
 crates/crypto/src/keystore.rs [pub] trait DeviceKeystore
+crates/crypto/src/keystore.rs [pub] trait PreparedDeviceSeal
+crates/crypto/src/keystore.rs [pub] trait RecoverableDeviceKeystore: DeviceKeystore
 crates/crypto/src/lib.rs [priv] fn from_recipient_error(error: RecipientError, wrong_key: UnlockError) -> UnlockError |322b91509358f786
 crates/crypto/src/lib.rs [priv] fn keystore_error(failure: KeystoreFailure, provider: &str, label: &str) -> UnlockError |cfd153757efa75b6
 crates/crypto/src/lib.rs [priv] fn wrap_key_from(bytes: &[u8]) -> Result<RecipientWrapKey, UnlockError> |ea653ba1f9eeaf54
@@ -126,11 +143,14 @@ crates/crypto/src/lib.rs [priv] use fault::FaultPoint |bbb87ed3aed8f147
 crates/crypto/src/lib.rs [priv] use recipient::RecipientError |8ac9b354ea51b409
 crates/crypto/src/lib.rs [priv] use zeroize::Zeroizing |df92b00a7874c4a0
 crates/crypto/src/lib.rs [pub] #[cfg(feature = "os-keystore")] use keystore::{PlatformKeystore, purge as purge_device_key} |a26b338e02163441
-crates/crypto/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum UnlockError |802cd0e3f2eff879
+crates/crypto/src/lib.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[error("incomplete recipient persistence could not be confirmed")] struct PublicationJournalFailure |fd1374db35609c29
+crates/crypto/src/lib.rs [pub] #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)] #[non_exhaustive] enum UnlockError |75e7158a1914a33f
 crates/crypto/src/lib.rs [pub] const FAULT_INJECTION_FEATURE: &str |78e188980dab703b
 crates/crypto/src/lib.rs [pub] const PHASE2_KEY_FAULT_IDS: &[&str] |3d598acd6fb440d7
-crates/crypto/src/lib.rs [pub] fn create_device_recipient<K: DeviceKeystore + ?Sized>( master: &VaultMasterKey, profile: ProfileId, recipient_id: [u8; IDENTIFIER_BYTES], label: &str, keystore: &K, ) -> Result<RecipientRecord, UnlockError> |e30bb46030b097ee
+crates/crypto/src/lib.rs [pub] fn create_device_recipient<K: DeviceKeystore + ?Sized>( master: &VaultMasterKey, profile: ProfileId, recipient_id: [u8; IDENTIFIER_BYTES], label: &str, keystore: &K, ) -> Result<RecipientRecord, UnlockError> |fed27482dce23b50
+crates/crypto/src/lib.rs [pub] fn create_recoverable_device_recipient<K, F>( master: &VaultMasterKey, profile: ProfileId, recipient_id: [u8; IDENTIFIER_BYTES], label: &str, keystore: &K, persist: F, ) -> Result<RecipientRecord, UnlockError> where K: RecoverableDeviceKeystore + ?Sized, F: FnOnce(&RecipientRecord) -> Result<(), PublicationJournalFailure>, |c12f4e37885f3218
 crates/crypto/src/lib.rs [pub] fn create_recovery_recipient( master: &VaultMasterKey, profile: ProfileId, recipient_id: [u8; IDENTIFIER_BYTES], secret: &RecoverySecret, argon2_profile: Argon2idProfile, ) -> Result<RecipientRecord, UnlockError> |4d4206b1728e17fc
+crates/crypto/src/lib.rs [pub] fn purge_incomplete_device_recipient<K: RecoverableDeviceKeystore + ?Sized>( record: &RecipientRecord, profile: ProfileId, keystore: &K, ) -> Result<bool, UnlockError> |48cace63747f22ae
 crates/crypto/src/lib.rs [pub] fn unlock_with_device<K: DeviceKeystore + ?Sized>( record: &RecipientRecord, profile: ProfileId, keystore: &K, ) -> Result<VaultMasterKey, UnlockError> |a1c5fcee21723621
 crates/crypto/src/lib.rs [pub] fn unlock_with_recovery( record: &RecipientRecord, profile: ProfileId, secret: &RecoverySecret, throttle: &mut UnlockThrottle, now_ms: u64, ) -> Result<VaultMasterKey, UnlockError> |50fd3e9a835633a0
 crates/crypto/src/lib.rs [pub] impl UnlockError :: #[must_use] const fn is_integrity_incident(&self) -> bool |ff516991fd43c900
@@ -143,7 +163,7 @@ crates/crypto/src/lib.rs [pub] mod recovery
 crates/crypto/src/lib.rs [pub] use derive::{ AUDIT_INFO, KEK_INFO_PREFIX, KEY_GENERATION_INFO, KeyScheduleError, RECIPIENT_MAC_INFO, REHEARSAL_INFO, STORE_INFO, VAULT_LOCATOR_INFO, } |2a6c1bc4e807e11f
 crates/crypto/src/lib.rs [pub] use fault::{FAULT_ACTION_VARIABLE, FAULT_READY_MARKER_VARIABLE, FAULT_SELECTION_VARIABLE} |4bc0495626fe051e
 crates/crypto/src/lib.rs [pub] use keys::{ ArtifactDek, AuditKey, DeviceWrappingKey, DomainId, DomainKek, DomainLocatorKey, IDENTIFIER_BYTES, KEY_BYTES, ProfileId, RandomnessUnavailable, RecipientMacKey, RecipientWrapKey, RecoverySecret, RehearsalKey, StoreKey, VaultMasterKey, } |6b292d00ef68e715
-crates/crypto/src/lib.rs [pub] use keystore::{DeviceKeystore, KeystoreFailure} |0fcb63632d39808a
+crates/crypto/src/lib.rs [pub] use keystore::{ DeviceKeystore, KeystoreFailure, PreparedDeviceSeal, RecoverableDeviceKeystore, } |c336dc0bd4c58866
 crates/crypto/src/lib.rs [pub] use recipient::{ DEVICE_KDF_ALGORITHM_ID, RECORD_MAC_BYTES, RECORD_VERSION, RECOVERY_KDF_ALGORITHM_ID, RecipientKind, RecipientParameters, RecipientRecord, RecipientSet, RecordError, SET_VERSION, WRAP_ALGORITHM_ID, WRAP_NONCE_BYTES, WRAPPED_VMK_BYTES, } |3c4209bf12147dba
 crates/crypto/src/lib.rs [pub] use recovery::{ Argon2idProfile, PINNED_PROFILES, RECOVERY_ARGON2ID_V1, RecoveryError, UnlockThrottle, } |725967dbc42eeb4a
 crates/crypto/src/recipient.rs [priv] fn bytes(entries: &[(Value, Value)], key: u64) -> Result<Vec<u8>, RecordError> |e52c86328852b046

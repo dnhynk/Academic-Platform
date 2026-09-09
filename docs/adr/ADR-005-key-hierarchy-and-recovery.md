@@ -140,6 +140,34 @@ safely clear. Earlier platform canary observations do not cover those copies.
 Hosted refusal/build evidence does not establish native positive acceptance,
 packaging, hardware protection or H1 admission.
 
+### Add-only recipient publication recovery (T268 / PR119 R1)
+
+Enabling macOS under the existing one-step recipient helper exposed a lifetime
+gap: a fallible wrap after successful persistent seal, or interruption before
+the record was returned/published, lost the only random generation blob. A
+same-label retry correctly refused the duplicate, but could not recover or
+purge the orphan. Local object destruction and the in-memory KY08 fixture do
+not establish persistent recovery, and no native RNG failure is claimed.
+
+The correction prepares a fresh, private, single-use seal identity first and
+finishes all recipient cryptography before native add. A required caller
+callback durably stages the complete encrypted recipient as an incomplete
+publication; callback error prevents add. The caller retains that record across
+ambiguous add errors, KY08 and failed final publication, resolving it only after
+durable publication or exact cleanup. Restart can open the staged recipient or
+purge only its exact generation; cleanup refusal retains the identity and a
+fresh attempt uses a fresh token. No API rebuilds that token from old bytes.
+
+The optional `RecoverableDeviceKeystore` seam preserves existing trait
+implementations. macOS requires it and refuses the legacy crypto helper before
+mutation; Windows/Linux formats and legacy behavior are unchanged. Native query
+selection and atomic duplicate refusal remain unchanged. Storage durability,
+exclusive incomplete-attempt ownership and final-publication reconciliation
+are caller obligations, detailed in the macOS contract. Bounded persistent
+fixture tests exercise restart and cleanup refusal; they do not grant native
+crash, provisioning or H1 acceptance. Exact crypto/keystore item inventories are
+regenerated through the unchanged deterministic reader for this API change.
+
 The exact item inventory is regenerated only for `keystore-platform`, using
 the unchanged `contracts/tests/support` compilation-unit and item reader. Its
 diff records the new private module, versioned provider and error variant;

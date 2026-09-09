@@ -160,6 +160,97 @@ impl fmt::Display for KeystoreError {
 
 impl std::error::Error for KeystoreError {}
 
+/// A fresh, single-use identity for an add-only persistent seal.
+///
+/// Preparation has no native side effect. Persist the blob and its label in an
+/// incomplete publication record before consuming this value with `seal`.
+/// There is deliberately no Clone or constructor from persisted bytes: restart
+/// may open or purge that exact identity, but must never reseal its generation.
+///
+/// ```compile_fail
+/// fn cannot_reuse(prepared: academic_keystore_platform::PreparedSeal) {
+///     let _ = prepared.seal(&[0; 32]);
+///     let _ = prepared.seal(&[1; 32]);
+/// }
+/// ```
+///
+/// ```compile_fail
+/// fn cannot_clone(prepared: academic_keystore_platform::PreparedSeal) {
+///     let _ = prepared.clone();
+/// }
+/// ```
+pub struct PreparedSeal {
+    label: KeystoreLabel,
+    blob: Vec<u8>,
+}
+
+impl fmt::Debug for PreparedSeal {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("PreparedSeal(<redacted>)")
+    }
+}
+
+impl PreparedSeal {
+    /// Borrows the exact non-secret identity to durably record before sealing.
+    #[must_use]
+    pub fn blob(&self) -> &[u8] {
+        &self.blob
+    }
+
+    /// Consumes this fresh identity in one native add attempt.
+    ///
+    /// Keep the durable identity on failure too: a failed/interrupted call is
+    /// not proof of absence. Recover with open or exact purge, never replay add.
+    pub fn seal(self, secret: &[u8]) -> Result<(), KeystoreError> {
+        const OPERATION: &str = "seal prepared device secret";
+        if secret.is_empty() || secret.len() > MAX_SECRET_BYTES {
+            return Err(KeystoreError::new(
+                KeystoreErrorCode::SecretTooLarge,
+                OPERATION,
+                None,
+            ));
+        }
+        #[cfg(target_os = "macos")]
+        {
+            let payload = decode_envelope(&self.blob, OPERATION)?;
+            macos::seal_prepared(&self.label, payload, secret, OPERATION)
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let _ = (self.label, secret);
+            Err(KeystoreError::new(
+                KeystoreErrorCode::Unsupported,
+                OPERATION,
+                None,
+            ))
+        }
+    }
+}
+
+/// Allocates an exact fresh identity without storing a key.
+///
+/// This extension is implemented only for the add-only macOS provider. Other
+/// providers retain their historical `seal` behavior and return Unsupported.
+pub fn prepare_seal(label: &KeystoreLabel) -> Result<PreparedSeal, KeystoreError> {
+    const OPERATION: &str = "prepare device secret";
+    #[cfg(target_os = "macos")]
+    {
+        Ok(PreparedSeal {
+            label: label.clone(),
+            blob: macos::prepare(label, OPERATION)?,
+        })
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = label;
+        Err(KeystoreError::new(
+            KeystoreErrorCode::Unsupported,
+            OPERATION,
+            None,
+        ))
+    }
+}
+
 /// What a purge actually did.
 ///
 /// The brokers differ and the difference is carried in the type rather than

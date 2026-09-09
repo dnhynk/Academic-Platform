@@ -57,6 +57,65 @@ generation. Concurrent open may already have obtained a copy when purge occurs;
 purge cannot erase previously recovered memory, backups, or ciphertext keys.
 This differs from Windows' stateless DPAPI-CNG blob, which purge cannot revoke.
 
+## Recipient publication and restart
+
+An add-only item must never become durable before the caller has its exact
+generation identity. `prepare_seal` creates a private, non-Clone `PreparedSeal`
+without native mutation. Its blob is available before its consuming `seal`
+method; persisted bytes cannot reconstruct that token or reseal an old
+generation. The low-level legacy `seal` facade remains available to existing
+native callers, but provides no interrupted-publication recovery on its own.
+Storage callers that need recovery must use preparation and durable staging.
+
+`academic-crypto::create_recoverable_device_recipient` prepares that identity
+and completes device-key generation, AEAD wrapping (including the fallible
+nonce), record encoding for the MAC, and the MAC before native add. It passes
+the complete encrypted `RecipientRecord` to a required staging callback. That
+callback receives no plaintext VMK or device wrapping key and must durably
+record an **incomplete** publication before returning success. This crypto
+helper writes no files and supplies no automatic fsync or storage durability
+guarantee; the storage caller owns those requirements. It must exclusively own
+the attempt, refuse an outstanding journal instead of overwriting it, and
+serialize publication, cleanup and retry.
+
+If staging returns an error, no native seal is attempted, even if the staging
+write partially succeeded. After staging succeeds, the complete record must
+remain durable through native errors, KY08, and final publication. A seal error
+can be ambiguous: do not infer absence or discard the record from the error
+category. After successful creation the returned record is ready for the
+caller's final publication; returning it does not establish that publication.
+Only confirmed durable final publication or confirmed exact cleanup permits
+resolving the incomplete attempt. Cleanup refusal retains its record for retry;
+there is no automatic Drop rollback that could lose its only identity.
+
+On restart, first reconcile the incomplete record against final publication.
+For a still-incomplete attempt, decode its canonical record and either verify
+and open it with `unlock_with_device` before final publication, or call
+`purge_incomplete_device_recipient` with the expected profile and provider.
+`Removed`/`NothingStored` (true/false in crypto) resolves only that generation,
+after which the caller may prepare a fresh attempt. An old or duplicate
+attempt's cleanup cannot remove an existing different generation. Never
+reconstruct/reseal the old token, discover a generation, delete by label alone,
+or treat a cleanup error as absence. A record already published is outside
+incomplete cleanup authority; it must follow the separate revocation contract.
+
+The legacy crypto one-step helper returns `PublicationJournalRequired` before
+mutation for macOS. Existing `DeviceKeystore` implementations remain source
+compatible through a default false requirement flag, while add-only brokers
+must opt into the recoverable extension. Windows stateless sealing and Linux's
+historical replacement behavior and envelopes remain unchanged. Their existing
+one-step helper does not acquire this new recovery guarantee.
+
+The platform-neutral persistent/add-only fixture stores synthetic broker state
+separately from the caller journal and reconnects after discarding creator
+state. It checks staging refusal, ambiguous add errors, interruption before and
+after add, failed final publication, cleanup refusal/retry, duplicates and stale
+identities. These bounded model tests establish the API ordering and recovery
+contract, not OS crash/power-loss durability. The historical in-memory KY08
+termination fixture establishes no persistent-store cleanup guarantee. The
+ignored positive macOS recipient harness now durably stages its record and
+retains the journal even on error; provisioned execution is still absent.
+
 ## Refusal, threading and memory
 
 SecItem calls block, so this synchronous facade refuses main-thread calls with

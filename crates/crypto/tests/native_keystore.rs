@@ -10,10 +10,13 @@
 
 #![cfg(feature = "os-keystore")]
 
+use std::io::Write as _;
+
 use academic_crypto::{
     DeviceKeystore as _, IDENTIFIER_BYTES, KeystoreFailure, PlatformKeystore, ProfileId,
-    RecipientParameters, RecipientRecord, UnlockError, VaultMasterKey, create_device_recipient,
-    purge_device_key, unlock_with_device,
+    PublicationJournalFailure, RecipientParameters, RecipientRecord, UnlockError, VaultMasterKey,
+    create_device_recipient, create_recoverable_device_recipient, purge_device_key,
+    unlock_with_device,
 };
 
 const PROFILE: ProfileId = ProfileId::from_bytes([0x71; IDENTIFIER_BYTES]);
@@ -60,7 +63,49 @@ fn native_roundtrip(prefix: &str, purge_removes: bool) {
         unreachable!("randomness must be available");
     };
 
-    let record = match create_device_recipient(&key, PROFILE, RECIPIENT, &label, &keystore) {
+    let created = if keystore.requires_publication_journal() {
+        // The positive macOS harness keeps the incomplete record even on a
+        // seal error or assertion unwind. A TempDir drop must not remove the
+        // only exact cleanup identity. The owning test lane retains this
+        // journal for reconciliation; this is not a native crash proof.
+        let directory = match tempfile::Builder::new()
+            .prefix("macos-recipient-publication-")
+            .tempdir()
+        {
+            Ok(directory) => directory.keep(),
+            Err(_) => unreachable!("the task journal directory must be available"),
+        };
+        create_recoverable_device_recipient(&key, PROFILE, RECIPIENT, &label, &keystore, |record| {
+            let bytes = record
+                .to_canonical_cbor()
+                .map_err(|_| PublicationJournalFailure)?;
+            let mut journal = std::fs::OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .open(directory.join("incomplete.cbor"))
+                .map_err(|_| PublicationJournalFailure)?;
+            journal
+                .write_all(&bytes)
+                .map_err(|_| PublicationJournalFailure)?;
+            journal.sync_all().map_err(|_| PublicationJournalFailure)?;
+            // On the macOS positive lane, sync the containing directories as
+            // well as the new file before allowing the native item to exist.
+            #[cfg(target_os = "macos")]
+            {
+                std::fs::File::open(&directory)
+                    .and_then(|file| file.sync_all())
+                    .map_err(|_| PublicationJournalFailure)?;
+                let parent = directory.parent().ok_or(PublicationJournalFailure)?;
+                std::fs::File::open(parent)
+                    .and_then(|file| file.sync_all())
+                    .map_err(|_| PublicationJournalFailure)?;
+            }
+            Ok(())
+        })
+    } else {
+        create_device_recipient(&key, PROFILE, RECIPIENT, &label, &keystore)
+    };
+    let record = match created {
         Ok(record) => record,
         Err(error) => unreachable!("the host broker must seal a device key: {error}"),
     };
