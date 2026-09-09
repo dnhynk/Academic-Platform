@@ -25,8 +25,10 @@ type ServiceResult = Result<academic_rpc::generated::MutableResponse, LocalServi
 #[derive(Debug)]
 enum Work {
     Details {
-        request: academic_rpc::details::DetailRequest,
-        reply: oneshot::Sender<Result<academic_rpc::details::DetailReply, LocalServiceError>>,
+        request: academic_rpc::domain_details::wire::DetailFrameRequest,
+        reply: oneshot::Sender<
+            Result<academic_rpc::domain_details::wire::DetailFrameReply, LocalServiceError>,
+        >,
     },
     Mutation {
         request: MutableRequest,
@@ -114,7 +116,7 @@ impl WriterQueue {
                 while let Ok(work) = receiver.recv() {
                     match work {
                         Work::Details { request, reply } => {
-                            let result = service.handle_detail_request_now(&request);
+                            let result = service.handle_detail_frame_now(&request);
                             let _ignored = reply.send(result);
                         }
                         Work::Mutation { request, reply } => {
@@ -174,8 +176,11 @@ impl WriterQueue {
     /// Detail reads and decisions share the same bounded owner lane and shutdown rules.
     pub async fn details(
         &self,
-        request: academic_rpc::details::DetailRequest,
-    ) -> Result<Result<academic_rpc::details::DetailReply, LocalServiceError>, AdmissionError> {
+        request: academic_rpc::domain_details::wire::DetailFrameRequest,
+    ) -> Result<
+        Result<academic_rpc::domain_details::wire::DetailFrameReply, LocalServiceError>,
+        AdmissionError,
+    > {
         if !self.accepting.load(Ordering::Acquire) {
             return Err(AdmissionError::ShuttingDown);
         }

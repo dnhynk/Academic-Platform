@@ -88,6 +88,26 @@ buffers are content and their Debug implementations redact payloads. The
 transcript DTO uses the specific Rust name `DetailSegment` and redacts raw and
 corrected text. Existing source scanners and discovery floors remain unchanged.
 
+The additive v3 normal-domain read uses the same JSON frame tags and unchanged
+protocol version under its own capability. Its request fixes domain, scope and
+both temporal coordinates; its separate reply has typed availability and
+accepted-event/artifact/claim provenance, with no imported decision receipt.
+Core reads one store-owned source transaction, authenticates original signed
+history independently and retains actual aggregate identity types. The default
+schema-one service still refuses aggregate admission, so this is a read scaffold;
+positive normal registration-command proof remains assigned to the separate
+encrypted synthetic service prerequisite. No source body schema, ordinary
+relation writer, admission posture or second canonical store is introduced.
+The exact availability matrix and bounds are recorded in the detail workspace
+contract. New source-content DTOs redact Debug and their byte/path inventories
+name actual additions; code-generation tools, historical fixtures, scanner rules
+and discovery floors are unchanged.
+
+The v3 addition increases the exact whole-package item count by 295 across
+core, RPC, store, daemon and desktop; the unchanged resolver/lexer derives each
+replacement inventory. Large transport payloads use internal boxed values with
+unchanged serialization, and generic available fields redact their Debug value.
+
 The review correction introduces imported source record version 2 with the same
 JSON fields, existing predicate and unchanged local RPC shape. Its per-relation
 subject binds the signed workspace/domain/scope/alias tuple; the reader retains

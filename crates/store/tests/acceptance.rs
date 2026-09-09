@@ -223,6 +223,104 @@ fn sql_acceptance_matches_pure_ledger() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+fn domain_source_snapshot_keeps_exact_history_through_update_and_reopen()
+-> Result<(), Box<dyn Error>> {
+    use academic_store::queries::{DomainHistoryRequest, domain_history_snapshot};
+
+    let database = TestDatabase::new("domain-source-coordinate")?;
+    let other = TestDatabase::new("domain-source-other-profile")?;
+    let namespace = 0x1800;
+    let domain_id = id::<DomainId>(namespace + 1)?;
+    let scope_id = id::<ScopeId>(namespace + 2)?;
+    let vault = database.vault(namespace)?;
+    let first = signed(&artifact_batch(&vault, namespace, 0x9800)?)?;
+    let verified = verify_signed_batch(&first.envelope, &first.authorization)?;
+    let mut store = database.profile.open_acceptance_store()?;
+    store.accept_verified_batch(
+        &verified,
+        command(&first.envelope, 41, Some(0)),
+        TimestampMillis::new(12_000),
+        &vault,
+    )?;
+    let request = DomainHistoryRequest {
+        domain_id,
+        scope_id,
+        known_at_accept_seq: None,
+        valid_at: TimestampMillis::new(150),
+    };
+    let mut reader = database.profile.open_reader()?;
+    let before = domain_history_snapshot(&mut reader, &request)?;
+    assert_eq!(before.domain_id, domain_id);
+    assert_eq!(before.scope_id, scope_id);
+    assert_eq!(before.coordinates.valid_at, request.valid_at);
+    assert_eq!(before.coordinates.known_at_accept_seq, 4);
+    assert_eq!(before.history.revision, 1);
+    assert_eq!(before.history.accept_seq_head, 4);
+    assert_eq!(before.source_authority.source_outbox_seq, 1);
+    assert_eq!(before.history.batches.len(), 1);
+    assert_eq!(before.history.batches[0].envelope, first.envelope);
+
+    // A selector within a batch still carries the complete original envelope;
+    // its source outbox watermark does not claim the batch completed there.
+    let historical = DomainHistoryRequest {
+        known_at_accept_seq: Some(2),
+        ..request
+    };
+    let inside = domain_history_snapshot(&mut reader, &historical)?;
+    assert_eq!(inside.coordinates.known_at_accept_seq, 2);
+    assert_eq!(inside.source_authority.source_outbox_seq, 0);
+    assert_eq!(inside.history.batches[0].envelope, first.envelope);
+
+    let second = signed(&existing_evidence_claim_batch(
+        0x1900,
+        0x9900,
+        domain_id,
+        scope_id,
+        id(namespace + 4)?,
+    )?)?;
+    store.accept_verified_batch(
+        &verify_signed_batch(&second.envelope, &second.authorization)?,
+        command(&second.envelope, 42, Some(1)),
+        TimestampMillis::new(13_000),
+        &vault,
+    )?;
+    let after = domain_history_snapshot(&mut reader, &request)?;
+    assert_eq!(after.history.revision, 2);
+    assert_eq!(after.coordinates.known_at_accept_seq, 5);
+    assert_eq!(after.source_authority.latest_accept_seq, 5);
+    assert_eq!(after.source_authority.source_outbox_seq, 2);
+    assert_eq!(after.history.batches[1].envelope, second.envelope);
+    assert_ne!(
+        after.source_authority.source_ledger_digest,
+        before.source_authority.source_ledger_digest
+    );
+    // Previously returned material stays fixed while the canonical profile advances.
+    assert_eq!(before.history.revision, 1);
+    assert_eq!(before.history.batches.len(), 1);
+    drop(reader);
+    drop(store);
+
+    let reopened = open_synthetic_profile(&database.root, &NativePathProbe::default())?;
+    let replay = domain_history_snapshot(&mut reopened.open_reader()?, &historical)?;
+    assert_eq!(replay.coordinates, inside.coordinates);
+    assert_eq!(replay.history.revision, 2);
+    assert_eq!(
+        replay.source_authority.source_ledger_digest,
+        inside.source_authority.source_ledger_digest
+    );
+    assert_eq!(replay.history.batches[0].envelope, first.envelope);
+    let empty = domain_history_snapshot(&mut other.profile.open_reader()?, &request)?;
+    assert_eq!(empty.history.revision, 0);
+    assert_eq!(empty.coordinates.known_at_accept_seq, 0);
+    assert!(empty.history.batches.is_empty());
+    assert!(matches!(
+        domain_history_snapshot(&mut other.profile.open_reader()?, &historical),
+        Err(academic_store::queries::QueryError::KnownAtBeyondHead { .. })
+    ));
+    Ok(())
+}
+
+#[test]
 fn sql_batch_acceptance_is_atomic() -> Result<(), Box<dyn Error>> {
     let database = TestDatabase::new("atomic")?;
     let vault = database.vault(0x200)?;

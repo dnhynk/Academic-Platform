@@ -2856,6 +2856,15 @@ const DESKTOP_SHIPPING_CLOSURE = [
  */
 // Instant/future/cell/Cell cover the monotonic deadline and controlled tests.
 const DESKTOP_PATH_ROOTS = [
+  // Closed v3 read DTOs share the authenticated IPC transport; no store/key API.
+  "domain_details",
+  "wire",
+  "DetailFrameRequest",
+  "DetailFrameReply",
+  "DomainReadRequest",
+  "DomainReadReply",
+  "ReadFailure",
+  "RuntimeResponse",
   // X4 closed RPC detail vocabulary and its native decoder tests; no new IO.
   "details",
   "dto",

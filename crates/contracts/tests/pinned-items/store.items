@@ -746,7 +746,6 @@ crates/store/src/model_run_closure_tests.rs [priv] use rusqlite::{Connection, Op
 crates/store/src/model_run_closure_tests.rs [priv] use std::{collections::BTreeMap, error::Error, fs, path::PathBuf} |3d9825e5e982b6d5
 crates/store/src/outbox.rs [priv] fn checked_i64(value: u64) -> Result<i64, OutboxError> |45b58352daadb54d
 crates/store/src/outbox.rs [priv] fn decode_row(row: RawOutboxRow) -> Result<OutboxEntry, OutboxError> |efa71d034f1b81d8
-crates/store/src/outbox.rs [priv] fn event_kind_mask(verified: &VerifiedBatch) -> [u8; 8] |caedbda7fa1257d4
 crates/store/src/outbox.rs [priv] fn id_from_blob<T>(bytes: Vec<u8>) -> Result<T, OutboxError> where T: std::str::FromStr<Err = DomainError>, |763bdbcbae4129ba
 crates/store/src/outbox.rs [priv] fn positive_u64(value: i64, reason: &'static str) -> Result<u64, OutboxError> |134f0ce6d321a774
 crates/store/src/outbox.rs [priv] impl Error for OutboxError
@@ -765,6 +764,7 @@ crates/store/src/outbox.rs [priv] use academic_domain::{BatchId, ContentDigest, 
 crates/store/src/outbox.rs [priv] use crate::{connection::ReaderConnection, error::StoreError} |1550939d55cec4e6
 crates/store/src/outbox.rs [priv] use rusqlite::{Transaction, params} |321babbea4923844
 crates/store/src/outbox.rs [priv] use std::{error::Error, fmt} |da07ae2fa3e26f41
+crates/store/src/outbox.rs [pub(crate)] fn event_kind_mask(verified: &VerifiedBatch) -> [u8; 8] |98cf72e5795b5da7
 crates/store/src/outbox.rs [pub(crate)] fn insert_outbox( transaction: &Transaction<'_>, verified: &VerifiedBatch, accept_seq_start: u64, accept_seq_end: u64, canonical_revision: u64, created_at: TimestampMillis, ) -> Result<(), OutboxError> |a24c4b22f916db7e
 crates/store/src/outbox.rs [pub] #[derive(Debug)] enum OutboxError |792a2cb5c0553852
 crates/store/src/outbox.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct OutboxEntry |680185cc2c2d38f5
@@ -946,6 +946,8 @@ crates/store/src/queries.rs [priv] fn read_claims( connection: &Connection, quer
 crates/store/src/queries.rs [priv] fn read_decisions( connection: &Connection, query: &ResolutionQuery, ) -> Result<Vec<ResolutionDecision>, QueryError> |fb558c3d438602aa
 crates/store/src/queries.rs [priv] fn read_relations( connection: &Connection, query: &ResolutionQuery, ) -> Result<Vec<ResolutionRelation>, QueryError> |cc29a12e5840d724
 crates/store/src/queries.rs [priv] fn resolve_from_connection( connection: &Connection, query: &ResolutionQuery, ) -> Result<ResolutionResult, QueryError> |2f716b409d03c167
+crates/store/src/queries.rs [priv] fn signed_history_from_connection( connection: &Connection, ) -> Result<SignedHistorySnapshot, QueryError> |de58d27b58f8af05
+crates/store/src/queries.rs [priv] impl DomainHistorySnapshot
 crates/store/src/queries.rs [priv] impl Error for QueryError
 crates/store/src/queries.rs [priv] impl Error for QueryError :: fn source(&self) -> Option<&(dyn Error + 'static)> |cf85601a442f897a
 crates/store/src/queries.rs [priv] impl From<ContractError> for QueryError
@@ -974,9 +976,11 @@ crates/store/src/queries.rs [pub(crate)] fn nonnegative_u64(value: i64, reason: 
 crates/store/src/queries.rs [pub(crate)] fn positive_u64(value: i64, reason: &'static str) -> Result<u64, QueryError> |fdd52d6c106e9a65
 crates/store/src/queries.rs [pub(crate)] fn query_collect<T, P, F>( connection: &Connection, sql: &str, params: P, mapper: F, ) -> Result<Vec<T>, QueryError> where P: Params, F: FnMut(&Row<'_>) -> rusqlite::Result<T>, |bf7cd218b788c161
 crates/store/src/queries.rs [pub] #[derive(Debug)] enum QueryError |597feaa79d20ea15
+crates/store/src/queries.rs [pub] #[derive(Debug)] struct DomainHistorySnapshot |f9f70260bb52ccc9
 crates/store/src/queries.rs [pub] #[derive(Debug)] struct ProjectionSnapshotRequest<'policy> |9b69265bbe7c625a
 crates/store/src/queries.rs [pub] #[derive(Debug)] struct SignedHistorySnapshot |98aa4ffa858a317d
 crates/store/src/queries.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct CanonicalSnapshot |66d4e886359f10ec
+crates/store/src/queries.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct DomainHistoryRequest |06919d4af79f5c07
 crates/store/src/queries.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct SignedHistoryBudget |a35676ab179ac3af
 crates/store/src/queries.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectionEvidenceLocator |930e6295e16a401f
 crates/store/src/queries.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct ProjectionResolvedClaim |a68a6835322459bf
@@ -986,10 +990,12 @@ crates/store/src/queries.rs [pub] #[derive(Debug, Clone, PartialEq, Eq)] struct 
 crates/store/src/queries.rs [pub] const PROJECTION_RESOLVER_VERSION: &str |c64449d5015594bb
 crates/store/src/queries.rs [pub] fn batch_material( reader: &ReaderConnection, batch_id: academic_domain::BatchId, ) -> Result<StoredBatchMaterial, QueryError> |1d2ff759d6edacc6
 crates/store/src/queries.rs [pub] fn canonical_snapshot(reader: &ReaderConnection) -> Result<CanonicalSnapshot, QueryError> |82dfc99d8f6bfeb1
+crates/store/src/queries.rs [pub] fn domain_history_snapshot( reader: &mut ReaderConnection, request: &DomainHistoryRequest, ) -> Result<DomainHistorySnapshot, QueryError> |b860b3d8b5500052
 crates/store/src/queries.rs [pub] fn projection_source_authority( reader: &mut ReaderConnection, domain_id: DomainId, known_at_accept_seq: u64, ) -> Result<ProjectionSourceAuthority, QueryError> |933ec2673ca6a4df
 crates/store/src/queries.rs [pub] fn projection_source_snapshot( reader: &mut ReaderConnection, request: &ProjectionSnapshotRequest<'_>, ) -> Result<ProjectionSourceSnapshot, QueryError> |79d624c7909ea787
 crates/store/src/queries.rs [pub] fn resolve( reader: &ReaderConnection, query: &ResolutionQuery, ) -> Result<ResolutionResult, QueryError> |33c4437434ac528b
-crates/store/src/queries.rs [pub] fn signed_history_snapshot( reader: &mut ReaderConnection, ) -> Result<SignedHistorySnapshot, QueryError> |5bdcf082d0ee42ac
+crates/store/src/queries.rs [pub] fn signed_history_snapshot( reader: &mut ReaderConnection, ) -> Result<SignedHistorySnapshot, QueryError> |eb0768c530d51247
+crates/store/src/queries.rs [pub] impl DomainHistorySnapshot :: fn verify_batch_binding( &self, batches: &[academic_contracts::VerifiedBatch], ) -> Result<(), QueryError> |4cff6ff2fcdb03df
 crates/store/src/queries.rs [pub] impl SignedHistoryBudget :: fn from_totals(count: u64, bytes: u64) -> Result<Self, QueryError> |9881da49657bc10e
 crates/store/src/queries.rs [pub] impl SignedHistoryBudget :: fn with_envelope(self, length: usize) -> Result<Self, QueryError> |8b078e8706ce1334
 crates/store/src/queries.rs [pub] struct SignedHistoryBatch |fb40b92d900d69c4

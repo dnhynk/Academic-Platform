@@ -486,6 +486,7 @@ fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> {
     for capability in &server.capability_ids {
         if !PHASE1_CAPABILITY_IDS.contains(&capability.as_str())
             && !crate::details::DETAILS_CAPABILITIES.contains(&capability.as_str())
+            && capability != crate::domain_details::CAPABILITY
         {
             return Err(RpcError::InvalidCapabilityId {
                 capability: capability.clone(),
@@ -579,15 +580,14 @@ pub fn validate_envelope(envelope: &LocalCoreEnvelope) -> Result<FrameClass, Rpc
             Ok(FrameClass::Command)
         }
         local_core_envelope::Payload::DetailRequest(frame) => {
-            let request: crate::details::DetailRequest =
+            let request: crate::domain_details::wire::DetailFrameRequest =
                 crate::details::decode(&frame.canonical_json)?;
-            if let crate::details::DetailRequest::DetailsDecide { decision } = request {
-                crate::details::reference(&decision.relation_id)?;
-            }
+            request.validate()?;
             Ok(FrameClass::Command)
         }
         local_core_envelope::Payload::DetailResponse(frame) => {
-            let reply: crate::details::DetailReply = crate::details::decode(&frame.canonical_json)?;
+            let reply: crate::domain_details::wire::DetailFrameReply =
+                crate::details::decode(&frame.canonical_json)?;
             reply.validate()?;
             Ok(FrameClass::Command)
         }

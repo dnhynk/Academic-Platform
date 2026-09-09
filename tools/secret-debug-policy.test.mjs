@@ -92,6 +92,9 @@ const CRATES_ROOT = join(REPOSITORY_ROOT, "crates");
 
 /** Types known to carry key material or decrypted plaintext, and why. */
 const SECRET_BEARING_TYPES = new Map([
+  ["Excerpt", "verified source text in the bounded domain detail reply"],
+  ["DomainTranscriptSegment", "verbatim and corrected domain transcript text with exact source mapping"],
+  ["ByteExcerpt", "original source bytes in the bounded domain detail reply"],
   ["DetailAudio", "the verified lecture audio bytes returned by the local detail service"],
   ["DetailSegment", "the original and corrected lecture transcript returned by the local detail service"],
   ["SignedHistoryBatch", "signed history containing the imported detail source content"],
@@ -250,6 +253,7 @@ const RAW_BYTE_PAYLOAD_TYPES =
  * and into that classification when `P2-RF13` made the type decide.
  */
 const PUBLIC_BYTES = new Map([
+  ["Commit.hex", "the selected immutable commit object hash, separate from snapshot and branch identity; no source bytes or key material"],
   [
     "Qualifier.key",
     "a qualifier name from the predicate registry's closed schema, not a cryptographic key",
@@ -344,6 +348,7 @@ const BYTE_CLASSES = new Map([
 const SECRET_BYTE_CLASSES = new Set(["key-material", "content"]);
 
 const BYTE_FIELD_CLASSES = new Map([
+  ["ByteExcerpt.bytes", "content"],
   ["DetailAudio.bytes", "content"],
   ["DetailDecisionRequest.client_instance_id", "identifier"],
   ["DetailDecisionRequest.idempotency_key", "identifier"],

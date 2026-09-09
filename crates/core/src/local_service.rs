@@ -182,6 +182,24 @@ impl LocalService {
             .handle(&self.profile, &mut self.service, request, timestamp_now()?)?)
     }
 
+    /// The versioned read reuses this profile's trusted context and writer-owned
+    /// service, while exposing no mutation inputs or admission capability.
+    pub fn handle_detail_frame_now(
+        &mut self,
+        request: &academic_rpc::domain_details::wire::DetailFrameRequest,
+    ) -> Result<academic_rpc::domain_details::wire::DetailFrameReply, LocalServiceError> {
+        use academic_rpc::domain_details::wire::{DetailFrameReply, DetailFrameRequest};
+        match request {
+            DetailFrameRequest::Imported(request) => self
+                .handle_detail_request_now(request)
+                .map(|reply| DetailFrameReply::Imported(Box::new(reply))),
+            DetailFrameRequest::Domain(request) => Ok(DetailFrameReply::Domain(
+                self.details
+                    .read_domain(&self.profile, &self.service, request, timestamp_now()?),
+            )),
+        }
+    }
+
     /// Executes one P1 mutable request. Policy denials and optimistic conflicts
     /// are returned as valid, immutable P1 rejection responses.
     pub fn handle_mutable_request(
