@@ -265,5 +265,32 @@ fn encrypted_startup_refuses_before_any_runtime_or_profile_io() -> TestResult {
         .collect::<Result<Vec<_>, _>>()?;
     assert_eq!(before, after);
     assert!(!runtime.exists());
+    let absent = material.root.join("absent-profile");
+    let invalid = material.root.join("invalid-profile");
+    std::fs::write(&invalid, b"not a profile")?;
+    for root in [&absent, &invalid] {
+        assert_eq!(
+            academic_daemon::encrypted::start(root, &runtime),
+            Err(academic_daemon::encrypted::EncryptedSyntheticStartupUnavailable)
+        );
+    }
+    assert!(!absent.exists());
+    assert_eq!(std::fs::read(&invalid)?, b"not a profile");
+    // A real keyed D1 session still lacks complete recognized source material.
+    // Opening it does not create a positive startup or domain-read authority.
+    let session = material.open()?;
+    let incarnation = session.local_incarnation().to_owned();
+    let marker = std::fs::read(material.root.join("detail-incarnation.v1"))?;
+    assert_eq!(
+        academic_daemon::encrypted::start(&material.root, &runtime),
+        Err(academic_daemon::encrypted::EncryptedSyntheticStartupUnavailable)
+    );
+    assert_eq!(session.local_incarnation(), incarnation);
+    assert_eq!(
+        std::fs::read(material.root.join("detail-incarnation.v1"))?,
+        marker
+    );
+    assert!(!runtime.exists());
+    drop(session);
     material.close()
 }

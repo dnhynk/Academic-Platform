@@ -22,19 +22,20 @@ crates/rpc/src/convert.rs [priv] fn validate_backup_command_wire(bytes: &[u8]) -
 crates/rpc/src/convert.rs [priv] fn validate_ingest_command_wire(bytes: &[u8]) -> Result<(), RpcError> |1c15b6856d906d69
 crates/rpc/src/convert.rs [priv] fn validate_mutable_request_wire(bytes: &[u8]) -> Result<(), RpcError> |78815fd22647c391
 crates/rpc/src/convert.rs [priv] fn validate_nonempty_bounded( value: &str, field: &'static str, maximum: usize, ) -> Result<(), RpcError> |85e70dca4fc9bd21
+crates/rpc/src/convert.rs [priv] fn validate_posture(policy: &generated::DataPosture) -> Result<TransportIdentity, RpcError> |91e51fae6f99e57c
 crates/rpc/src/convert.rs [priv] fn validate_receipt(receipt: &generated::ImmutableReceipt) -> Result<ValidatedReceipt, RpcError> |53ebe8c954e62606
 crates/rpc/src/convert.rs [priv] fn validate_restore_command_wire(bytes: &[u8]) -> Result<(), RpcError> |4611138f18e5f960
-crates/rpc/src/convert.rs [priv] fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> |77693901567e7f7f
+crates/rpc/src/convert.rs [priv] fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> |bc44bebfc1193db6
 crates/rpc/src/convert.rs [priv] impl IdempotencyKey
 crates/rpc/src/convert.rs [priv] impl OpaqueId
-crates/rpc/src/convert.rs [priv] mod tests :: #[test] fn an_admitted_handshake_validates_on_the_client() -> Result<(), RpcError> |225684414280364a
+crates/rpc/src/convert.rs [priv] mod tests :: #[test] fn an_admitted_handshake_validates_on_the_client() -> Result<(), RpcError> |1df394a158506dfd
 crates/rpc/src/convert.rs [priv] mod tests :: const RECEIPT_DIGEST: &str |fcd219186d225d61
 crates/rpc/src/convert.rs [priv] mod tests :: fn admitted_policy() -> DataPosture |215919ded3dd2c37
 crates/rpc/src/convert.rs [priv] mod tests :: fn client() -> ClientHandshake |c69b3bdef6d3fe30
-crates/rpc/src/convert.rs [priv] mod tests :: use crate::{ ServerHandshakeConfig, generated::{ClientHandshake, DataPosture, ProtocolVersion}, handshake::negotiate_handshake, } |81b2940ae331053e
+crates/rpc/src/convert.rs [priv] mod tests :: use crate::{ ServerHandshakeConfig, generated::{ClientHandshake, DataPosture, ProtocolVersion}, handshake::{negotiate_handshake, storage_schema_for}, } |0621a95ef2ec11ef
 crates/rpc/src/convert.rs [priv] mod tests :: use super::* |19dbf88307d136ac
 crates/rpc/src/convert.rs [priv] use academic_domain::ContentDigest |67f9e4ea3120c4ca
-crates/rpc/src/convert.rs [priv] use crate::{ PHASE1_PROTOCOL_POLICY, error::RpcError, generated::{ self, LocalCoreEnvelope, MutableRequest, MutableResponse, MutationStatus, ProfileLockState, ServerHandshake, WriteDisposition, local_core_envelope, mutable_request, }, handshake::{ LOCAL_CORE_PROTOCOL_NAME, LOCAL_CORE_PROTOCOL_VERSION, MINIMUM_CLIENT_VERSION, PHASE1_CAPABILITY_IDS, READ_ONLY_CAPABILITY_IDS, WRITE_CAPABILITY_IDS, expected_capability_for_command, protocol_version_from_proto, storage_schema_for, validate_capability_list, validate_client_handshake, }, limits::{ FrameClass, IDEMPOTENCY_KEY_BYTES, MAX_DAEMON_BUILD_BYTES, MAX_PROJECTION_STATES, MAX_PROTOBUF_NESTING_DEPTH, MAX_RESPONSE_REASON_BYTES, MAX_SYNTHETIC_FIXTURE_ID_BYTES, OPAQUE_ID_BYTES, SHA256_DIGEST_BYTES, }, } |6286b4cdb4b96bf8
+crates/rpc/src/convert.rs [priv] use crate::{ error::RpcError, generated::{ self, LocalCoreEnvelope, MutableRequest, MutableResponse, MutationStatus, ProfileLockState, ServerHandshake, WriteDisposition, local_core_envelope, mutable_request, }, handshake::{ ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY, ENCRYPTED_SYNTHETIC_UNAVAILABLE, LOCAL_CORE_PROTOCOL_NAME, LOCAL_CORE_PROTOCOL_VERSION, MINIMUM_CLIENT_VERSION, PHASE1_CAPABILITY_IDS, READ_ONLY_CAPABILITY_IDS, TransportIdentity, WRITE_CAPABILITY_IDS, expected_capability_for_command, policy_message, protocol_version_from_proto, validate_capability_list, validate_client_handshake, }, limits::{ FrameClass, IDEMPOTENCY_KEY_BYTES, MAX_DAEMON_BUILD_BYTES, MAX_PROJECTION_STATES, MAX_PROTOBUF_NESTING_DEPTH, MAX_RESPONSE_REASON_BYTES, MAX_SYNTHETIC_FIXTURE_ID_BYTES, OPAQUE_ID_BYTES, SHA256_DIGEST_BYTES, }, } |c33e616229c78355
 crates/rpc/src/convert.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
 crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ValidatedAcceptanceRange |cecebfc91c411551
 crates/rpc/src/convert.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq)] struct ValidatedReceipt |d030081b45ef7d65
@@ -350,29 +351,37 @@ crates/rpc/src/frame.rs [pub] fn decode_exact_frame(bytes: &[u8], class: FrameCl
 crates/rpc/src/frame.rs [pub] fn decode_message_frame<M>(bytes: &[u8], class: FrameClass) -> Result<M, RpcError> where M: Message + Default, |7bdf076975e7c00b
 crates/rpc/src/frame.rs [pub] fn encode_frame(payload: &[u8], class: FrameClass) -> Result<Vec<u8>, RpcError> |d5694c5133f1c83b
 crates/rpc/src/frame.rs [pub] fn encode_message_frame<M: Message>( message: &M, class: FrameClass, ) -> Result<Vec<u8>, RpcError> |17f9d48f9201cfcb
-crates/rpc/src/generated.rs [priv] const EXPECTED_CODEGEN_FNV1A64: u64 |0c873564eb59cb2c
-crates/rpc/src/generated.rs [priv] const EXPECTED_SCHEMA_FNV1A64: u64 |a20a895a7e5e291b
+crates/rpc/src/generated.rs [priv] const EXPECTED_CODEGEN_FNV1A64: u64 |5fc37e80c60d89e7
+crates/rpc/src/generated.rs [priv] const EXPECTED_SCHEMA_FNV1A64: u64 |ad9893a7da452edb
 crates/rpc/src/generated.rs [priv] fn fnv1a64(bytes: &[u8]) -> u64 |601d1bccfa48d284
 crates/rpc/src/generated.rs [priv] include!(concat!(env!("OUT_DIR"), "/academic.v1.rs")) |77f0f0a178592621
 crates/rpc/src/generated.rs [pub] #[must_use] fn codegen_fingerprints_match() -> bool |fe708205c81e193f
 crates/rpc/src/handshake.rs [priv] const fn client_is_below_minimum(client: ProtocolVersion, minimum: ProtocolVersion) -> bool |1fc263e995cd1d0a
 crates/rpc/src/handshake.rs [priv] const fn negotiate_same_major_minor( client: ProtocolVersion, server: ProtocolVersion, ) -> ProtocolVersion |8a6be3ed01aa40bd
 crates/rpc/src/handshake.rs [priv] fn contains_capability(haystack: &[&str], needle: &str) -> bool |f52525c68cc35945
-crates/rpc/src/handshake.rs [priv] fn is_known_capability(capability: &str) -> bool |c3026ce7fbdc98fe
-crates/rpc/src/handshake.rs [priv] fn policy_message(posture: &Posture) -> DataPosture |cd14d255d55de1b9
+crates/rpc/src/handshake.rs [priv] fn is_known_capability(capability: &str) -> bool |327a1c7067f2e378
+crates/rpc/src/handshake.rs [priv] fn negotiate_encrypted_scaffold( client: &ClientHandshake, version: ProtocolVersion, config: &ServerHandshakeConfig, ) -> Result<ServerHandshake, RpcError> |0f5e1cd68db878e1
 crates/rpc/src/handshake.rs [priv] fn proto_version(version: ProtocolVersion) -> generated::ProtocolVersion |19dc41ca76aeb946
 crates/rpc/src/handshake.rs [priv] impl Default for ServerHandshakeConfig
 crates/rpc/src/handshake.rs [priv] impl Default for ServerHandshakeConfig :: fn default() -> Self |60fad6ddcfa45fac
 crates/rpc/src/handshake.rs [priv] impl ServerHandshakeConfig
+crates/rpc/src/handshake.rs [priv] impl TransportIdentity
+crates/rpc/src/handshake.rs [priv] impl TransportIdentity :: fn from_posture(posture: &Posture) -> Self |4a12b64f96d6a07e
 crates/rpc/src/handshake.rs [priv] use academic_admission::Posture |93dead50f1055ef4
 crates/rpc/src/handshake.rs [priv] use crate::{ error::RpcError, generated::{ self, ClientHandshake, DataPosture, MutableRequest, ProfileLockState, ServerHandshake, StorageSchemaVersion, WriteDisposition, mutable_request, }, limits::{MAX_CAPABILITY_ID_BYTES, MAX_CAPABILITY_IDS, MAX_DAEMON_BUILD_BYTES}, } |e52f8fd30b53c391
 crates/rpc/src/handshake.rs [priv] use std::collections::BTreeSet |6c8e3ee7be329ea9
+crates/rpc/src/handshake.rs [pub(crate)] #[derive(Debug, Clone, Copy, PartialEq, Eq)] enum TransportIdentity |945292fe0b15fcfb
+crates/rpc/src/handshake.rs [pub(crate)] const ENCRYPTED_SYNTHETIC_UNAVAILABLE: &str |bc5c870cfdcd0a3b
+crates/rpc/src/handshake.rs [pub(crate)] fn policy_message(posture: &Posture) -> DataPosture |8a497cdf845f2d58
 crates/rpc/src/handshake.rs [pub(crate)] fn protocol_version_from_proto( value: Option<&generated::ProtocolVersion>, field: &'static str, ) -> Result<ProtocolVersion, RpcError> |d6b94215a47f700f
 crates/rpc/src/handshake.rs [pub(crate)] fn validate_capability_list(capabilities: &[String]) -> Result<(), RpcError> |4f561fdab0274cc1
 crates/rpc/src/handshake.rs [pub(crate)] fn validate_client_handshake( client: &ClientHandshake, ) -> Result<ProtocolVersion, RpcError> |f9bf316c9e7a369a
+crates/rpc/src/handshake.rs [pub(crate)] impl TransportIdentity :: const fn vault_format(self) -> &'static str |0ad394fde1291b77
+crates/rpc/src/handshake.rs [pub(crate)] impl TransportIdentity :: fn storage_schema(self) -> StorageSchemaVersion |b0a69fab31da166f
 crates/rpc/src/handshake.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)] struct ProtocolVersion |a3e20509d3ee2a7b
 crates/rpc/src/handshake.rs [pub] #[derive(Debug, Clone, PartialEq)] struct ServerHandshakeConfig |2344961a5781448c
 crates/rpc/src/handshake.rs [pub] #[must_use] fn storage_schema_for(production_data_allowed: bool) -> StorageSchemaVersion |2039dbb2ede3d1d5
+crates/rpc/src/handshake.rs [pub] const ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY: &str |4026938dc719cfaa
 crates/rpc/src/handshake.rs [pub] const LOCAL_CORE_PROTOCOL_NAME: &str |e67300611d5dd831
 crates/rpc/src/handshake.rs [pub] const LOCAL_CORE_PROTOCOL_VERSION: ProtocolVersion |aee7235371f80871
 crates/rpc/src/handshake.rs [pub] const MINIMUM_CLIENT_VERSION: ProtocolVersion |88ae8784f88e85d7
@@ -381,7 +390,8 @@ crates/rpc/src/handshake.rs [pub] const READ_ONLY_CAPABILITY_IDS: &[&str] |8673b
 crates/rpc/src/handshake.rs [pub] const WRITE_CAPABILITY_IDS: &[&str] |c43db9f25dbdd42d
 crates/rpc/src/handshake.rs [pub] fn authorize_mutable_request( handshake: &ServerHandshake, request: &MutableRequest, ) -> Result<(), RpcError> |848b9f1833300c2f
 crates/rpc/src/handshake.rs [pub] fn expected_capability_for_command(command: &mutable_request::Command) -> &'static str |2d49a6cdbb9e791a
-crates/rpc/src/handshake.rs [pub] fn negotiate_handshake( client: &ClientHandshake, config: &ServerHandshakeConfig, ) -> Result<ServerHandshake, RpcError> |996634816005df3f
+crates/rpc/src/handshake.rs [pub] fn negotiate_handshake( client: &ClientHandshake, config: &ServerHandshakeConfig, ) -> Result<ServerHandshake, RpcError> |e1a5dc8fde7c89b5
+crates/rpc/src/handshake.rs [pub] impl ServerHandshakeConfig :: #[must_use] fn encrypted_synthetic_scaffold() -> Self |f117b3710cad8a70
 crates/rpc/src/handshake.rs [pub] impl ServerHandshakeConfig :: #[must_use] fn with_posture(mut self, posture: Posture) -> Self |7e3eb8ed8e7e0b97
 crates/rpc/src/lib.rs [priv] #[cfg(test)] mod tests
 crates/rpc/src/lib.rs [priv] fn require_frame_class(actual: FrameClass, expected: FrameClass) -> Result<(), RpcError> |2b6186b5171493b2

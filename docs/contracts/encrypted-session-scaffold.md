@@ -84,8 +84,9 @@ No public arbitrary-history marker can authenticate a synthetic service.
 The following obligations remain separate:
 
 - D2/T259: six-arm canonical store acceptance and complete normalized-frame closure.
-- D3: the approved third non-admitted encrypted-synthetic posture, full selected-service
-  reconciliation, host/singleton/startup and handshake/capability selection.
+- D3: the [third posture and unavailable RPC scaffold](encrypted-synthetic-domain-v1.md)
+  are implemented; operational selected-service composition and host/singleton
+  startup remain gated on complete recognized material.
 - D4: closed recognized corpus and positive proof through the ordinary registration command.
 - D5: encrypted portability and separately checked restore/new-root semantics.
 
@@ -113,5 +114,6 @@ cargo test -p academic-encrypted-session-tests --no-default-features --features 
 
 Tests use real profile/vault APIs, independently supplied authorization,
 recovery unlock, absent/wrong-material refusal, same-root reopen, exact AEAD
-source reads, borrowing/ownership compile failures, and refusal before D3
-startup. No in-memory or direct SQL fixture substitutes for a session.
+source reads, borrowing/ownership compile failures, and startup refusal even
+while a real keyed session is open. No in-memory or direct SQL fixture
+substitutes for a session.

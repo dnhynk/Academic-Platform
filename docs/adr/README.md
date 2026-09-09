@@ -18,3 +18,9 @@ The tracked LF bytes of the canonical design document have SHA-256 `4830DEBD1A9E
 | [012](ADR-012-migration-backup-restore-export.md) | Proposed | original signed bytes preserved | version fixtures, resumable migration, empty-target restore, export round-trip |
 
 “Proposed” is not permission to ingest real data or ship a security claim. Acceptance evidence belongs in tests and reproducible reports, not only in prose.
+
+The [D3 encrypted synthetic amendment](../contracts/encrypted-synthetic-domain-v1.md)
+records a third non-admitted posture and explicitly negotiated unavailable RPC
+scaffold under ADR-002/009/012. Both legacy encodings and `VerifiedAdmission`
+authority are preserved. D4 is absent, startup remains unavailable, and none of
+the real-data, X4/H1 or encrypted-portability gates above is accepted by D3.

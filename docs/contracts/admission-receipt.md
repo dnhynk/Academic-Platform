@@ -183,11 +183,18 @@ Binding a receipt to a profile would change the signed payload shape, which is
 frozen here and reproduced byte-for-byte by the committed fixture. `P2-H1` owns
 the signing round that could change it.
 
-`storage_schema` on the local IPC handshake is chosen by the posture through one
-function, `academic_rpc::handshake::storage_schema_for`, which both the emitter
-and the client validator call. The vault object formats are not chosen by the
-posture: this build's vault reads and writes `PLAINTEXT_SYNTHETIC_V1` whatever
-the posture says, because the vault that writes `AEAD_CHUNKED_V2` is the
-non-default `aead-objects` feature and is not what a default-lane daemon links.
-The admitted posture's `object_format` therefore describes the format admission
-would require, not the format the running daemon uses.
+Local IPC now classifies three complete posture combinations before selecting
+storage and vault expectations. The original `storage_schema_for(bool)` remains
+a compatibility wrapper for the two legacy combinations. Their exact wire
+bytes remain unchanged: both still announce `PLAINTEXT_SYNTHETIC_V1` vault
+reads/writes because the default daemon does not link the non-default AEAD vault.
+The admitted posture's `object_format` describes the required format, not proof
+of a selected daemon's physical identity or operational service.
+
+The closed `Posture::encrypted_synthetic()` description is explicitly
+non-admitted: schema 2, SQLCipher, `AEAD_CHUNKED_V2`, production permission false,
+network `NONE`, and no receipt digest/platforms. It cannot mint `VerifiedAdmission`
+or replace the sole admitted constructor. Its exact six-field JSON differs from
+both preserved legacy encodings. It establishes neither a ready service nor
+recognized synthetic material; its opt-in IPC branch is locked and unavailable.
+See the [D3 contract](encrypted-synthetic-domain-v1.md) for the complete matrix.

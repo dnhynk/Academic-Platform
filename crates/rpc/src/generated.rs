@@ -2,8 +2,8 @@
 
 include!(concat!(env!("OUT_DIR"), "/academic.v1.rs"));
 
-const EXPECTED_SCHEMA_FNV1A64: u64 = 0x06b5_887d_b5a5_f8ad;
-const EXPECTED_CODEGEN_FNV1A64: u64 = 0xee71_6da5_05bf_ad9b;
+const EXPECTED_SCHEMA_FNV1A64: u64 = 0x5c24_cb93_d23d_1872;
+const EXPECTED_CODEGEN_FNV1A64: u64 = 0xdf63_f154_d955_3900;
 
 fn fnv1a64(bytes: &[u8]) -> u64 {
     let mut value = 0xcbf2_9ce4_8422_2325_u64;

@@ -754,7 +754,7 @@ const PINNED_PACKAGES: usize = 72;
 ///
 /// 11 748 over 43 packages before `P2-RF31`. The 28 packages that joined and
 /// the literal values that joined the fingerprint are the difference.
-const PINNED_ITEMS: usize = 18_861;
+const PINNED_ITEMS: usize = 18_880;
 
 /// The file holding one package's pinned item set.
 fn pin_path(repository: &Path, package: &str) -> PathBuf {
@@ -1593,7 +1593,12 @@ fn absolute_paths(code: &str) -> BTreeSet<String> {
 /// uses, over the nine crates that ship an executable. `connector` and
 /// `indexer` are absent because they reach nothing: their whole `main` reads
 /// `PROCESS_CLASS.capabilities()` through an import.
-const BINARY_REACHES: [(&str, &str, &str); 40] = [
+const BINARY_REACHES: [(&str, &str, &str); 41] = [
+    (
+        "daemon",
+        "academic_rpc::handshake",
+        "Fixed synthetic nonce tests use the existing protocol name and identity-only negotiation.",
+    ),
     (
         "daemon",
         "thiserror::Error",

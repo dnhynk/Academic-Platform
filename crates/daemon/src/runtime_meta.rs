@@ -127,3 +127,85 @@ pub(crate) fn remove_metadata(path: &Path) -> Result<(), DaemonError> {
         )),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use academic_rpc::{
+        ServerHandshakeConfig, generated::WriteDisposition,
+        handshake::ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY, negotiate_handshake,
+    };
+
+    #[test]
+    fn actual_nonce_authentication_preserves_legacy_and_opt_in_negotiation()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let nonce = SessionNonce([0x41; 32]);
+        let legacy = ClientHandshake {
+            protocol_name: academic_rpc::handshake::LOCAL_CORE_PROTOCOL_NAME.to_owned(),
+            protocol_version: Some(academic_rpc::generated::ProtocolVersion { major: 1, minor: 0 }),
+            capability_ids: vec![
+                academic_rpc::domain_details::CAPABILITY.to_owned(),
+                nonce.capability_id(),
+            ],
+        };
+        let authenticated = authenticate_session(legacy.clone(), &nonce)?;
+        assert_eq!(
+            authenticated.capability_ids,
+            [academic_rpc::domain_details::CAPABILITY]
+        );
+        let original = negotiate_handshake(&authenticated, &ServerHandshakeConfig::default())?;
+        let mut opt_in = legacy.clone();
+        opt_in
+            .capability_ids
+            .insert(0, ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY.to_owned());
+        let supported = authenticate_session(opt_in.clone(), &nonce)?;
+        assert_eq!(
+            negotiate_handshake(&supported, &ServerHandshakeConfig::default())?,
+            original
+        );
+        assert_eq!(
+            negotiate_handshake(
+                &supported,
+                &ServerHandshakeConfig::encrypted_synthetic_scaffold()
+            )?
+            .write_disposition,
+            WriteDisposition::DeniedServiceUnavailable as i32
+        );
+        assert!(
+            negotiate_handshake(
+                &authenticated,
+                &ServerHandshakeConfig::encrypted_synthetic_scaffold()
+            )
+            .is_err()
+        );
+        opt_in.capability_ids.push("unknown.future.v1".to_owned());
+        let unknown = authenticate_session(opt_in, &nonce)?;
+        assert_eq!(
+            negotiate_handshake(&unknown, &ServerHandshakeConfig::default())?.write_disposition,
+            WriteDisposition::DeniedUnknownCapability as i32
+        );
+        assert!(
+            negotiate_handshake(
+                &unknown,
+                &ServerHandshakeConfig::encrypted_synthetic_scaffold()
+            )
+            .is_err()
+        );
+        for tokens in [
+            vec![],
+            vec![nonce.capability_id(), nonce.capability_id()],
+            vec![SessionNonce([0x42; 32]).capability_id()],
+            vec![
+                nonce.capability_id(),
+                SessionNonce([0x42; 32]).capability_id(),
+            ],
+        ] {
+            let invalid = ClientHandshake {
+                capability_ids: tokens,
+                ..legacy.clone()
+            };
+            assert!(authenticate_session(invalid, &nonce).is_err());
+        }
+        Ok(())
+    }
+}

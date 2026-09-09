@@ -5,16 +5,16 @@ use std::collections::BTreeSet;
 use academic_domain::ContentDigest;
 
 use crate::{
-    PHASE1_PROTOCOL_POLICY,
     error::RpcError,
     generated::{
         self, LocalCoreEnvelope, MutableRequest, MutableResponse, MutationStatus, ProfileLockState,
         ServerHandshake, WriteDisposition, local_core_envelope, mutable_request,
     },
     handshake::{
+        ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY, ENCRYPTED_SYNTHETIC_UNAVAILABLE,
         LOCAL_CORE_PROTOCOL_NAME, LOCAL_CORE_PROTOCOL_VERSION, MINIMUM_CLIENT_VERSION,
-        PHASE1_CAPABILITY_IDS, READ_ONLY_CAPABILITY_IDS, WRITE_CAPABILITY_IDS,
-        expected_capability_for_command, protocol_version_from_proto, storage_schema_for,
+        PHASE1_CAPABILITY_IDS, READ_ONLY_CAPABILITY_IDS, TransportIdentity, WRITE_CAPABILITY_IDS,
+        expected_capability_for_command, policy_message, protocol_version_from_proto,
         validate_capability_list, validate_client_handshake,
     },
     limits::{
@@ -356,6 +356,39 @@ fn admitted_canonical_json(receipt_digest: &str) -> Vec<u8> {
     .into_bytes()
 }
 
+fn validate_posture(policy: &generated::DataPosture) -> Result<TransportIdentity, RpcError> {
+    if policy == &policy_message(&academic_admission::Posture::synthetic()) {
+        return Ok(TransportIdentity::LegacySynthetic);
+    }
+    if policy == &policy_message(&academic_admission::Posture::encrypted_synthetic()) {
+        return Ok(TransportIdentity::EncryptedSyntheticScaffold);
+    }
+    if policy.production_data_allowed
+        && policy.data_policy == "REAL_PERSONAL_DATA_PERMITTED"
+        && policy.storage_mode == "SQLCIPHER_ENCRYPTED_PROFILE_V2"
+        && policy.storage_encryption == "SQLCIPHER_4_AES_256_CBC_HMAC_SHA512_PBKDF2_256000"
+        && policy.product_network == "BROKERED_EGRESS_ONLY"
+        && policy.object_format == "AEAD_CHUNKED_V2"
+        && policy.admission_receipt_digest.len() == 64
+        && policy
+            .admission_receipt_digest
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        && policy.admission_platforms
+            == academic_admission::REQUIRED_ADMISSION_PLATFORMS
+                .iter()
+                .map(|platform| (*platform).to_owned())
+                .collect::<Vec<_>>()
+        && policy.canonical_json == admitted_canonical_json(&policy.admission_receipt_digest)
+    {
+        return Ok(TransportIdentity::LegacyAdmitted);
+    }
+    Err(RpcError::InvalidFieldValue {
+        field: "server.policy",
+        reason: "posture fields or canonical bytes drifted",
+    })
+}
+
 fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> {
     if server.protocol_name != LOCAL_CORE_PROTOCOL_NAME {
         return Err(RpcError::ProtocolNameMismatch {
@@ -382,28 +415,27 @@ fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> {
     let policy = server.policy.as_ref().ok_or(RpcError::MissingField {
         field: "server.policy",
     })?;
+    // Classify only complete, validated field/canonical-byte combinations.
+    // The wire never constructs a Posture or grants verified admission.
+    let identity = validate_posture(policy)?;
     let storage = server
         .storage_schema
         .as_ref()
         .ok_or(RpcError::MissingField {
             field: "server.storage_schema",
         })?;
-    // The posture chooses the schema, and it chooses it here through the same
-    // function the emitter announces it with. Reading the posture off the wire
-    // rather than off this process is safe because the posture itself is
-    // checked below against the exact bytes each of its two values may carry.
-    if *storage != storage_schema_for(policy.production_data_allowed) {
+    if *storage != identity.storage_schema() {
         return Err(RpcError::InvalidFieldValue {
             field: "server.storage_schema",
             reason: "must be the schema this posture announces",
         });
     }
-    if server.vault_read_formats.as_slice() != ["PLAINTEXT_SYNTHETIC_V1"]
-        || server.vault_write_format != "PLAINTEXT_SYNTHETIC_V1"
+    if server.vault_read_formats.as_slice() != [identity.vault_format()]
+        || server.vault_write_format != identity.vault_format()
     {
         return Err(RpcError::InvalidFieldValue {
             field: "server.vault_formats",
-            reason: "must retain the Phase 1 plaintext synthetic format",
+            reason: "must match this exact posture transport identity",
         });
     }
     if server.projections.len() > MAX_PROJECTION_STATES {
@@ -447,46 +479,13 @@ fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> {
             value: server.lock_state,
         });
     }
-    let valid_posture = if policy.production_data_allowed {
-        policy.data_policy == "REAL_PERSONAL_DATA_PERMITTED"
-            && policy.storage_mode == "SQLCIPHER_ENCRYPTED_PROFILE_V2"
-            && policy.storage_encryption == "SQLCIPHER_4_AES_256_CBC_HMAC_SHA512_PBKDF2_256000"
-            && policy.product_network == "BROKERED_EGRESS_ONLY"
-            && policy.object_format == "AEAD_CHUNKED_V2"
-            && policy.admission_receipt_digest.len() == 64
-            && policy
-                .admission_receipt_digest
-                .bytes()
-                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-            && policy.admission_platforms
-                == academic_admission::REQUIRED_ADMISSION_PLATFORMS
-                    .iter()
-                    .map(|platform| (*platform).to_owned())
-                    .collect::<Vec<_>>()
-            && policy.canonical_json == admitted_canonical_json(&policy.admission_receipt_digest)
-    } else {
-        policy.data_policy == PHASE1_PROTOCOL_POLICY.data_policy
-            && policy.storage_mode == PHASE1_PROTOCOL_POLICY.storage_mode
-            && policy.storage_encryption == PHASE1_PROTOCOL_POLICY.storage_encryption
-            && policy.product_network == PHASE1_PROTOCOL_POLICY.product_network
-            && policy.object_format.is_empty()
-            && policy.admission_receipt_digest.is_empty()
-            && policy.admission_platforms.is_empty()
-            && policy.canonical_json
-                == academic_admission::Posture::synthetic().canonical_json_bytes()
-    };
-    if !valid_posture {
-        return Err(RpcError::InvalidFieldValue {
-            field: "server.policy",
-            reason: "posture fields or canonical bytes drifted",
-        });
-    }
-
     validate_capability_list(&server.capability_ids)?;
     for capability in &server.capability_ids {
         if !PHASE1_CAPABILITY_IDS.contains(&capability.as_str())
             && !crate::details::DETAILS_CAPABILITIES.contains(&capability.as_str())
             && capability != crate::domain_details::CAPABILITY
+            && !(identity == TransportIdentity::EncryptedSyntheticScaffold
+                && capability == ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY)
         {
             return Err(RpcError::InvalidCapabilityId {
                 capability: capability.clone(),
@@ -511,11 +510,29 @@ fn validate_server_handshake(server: &ServerHandshake) -> Result<(), RpcError> {
             value: server.write_disposition,
         }
     })?;
+    if identity == TransportIdentity::EncryptedSyntheticScaffold {
+        if lock_state != ProfileLockState::Locked
+            || !server.projections.is_empty()
+            || server.capability_ids.as_slice() != [ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY]
+            || disposition != WriteDisposition::DeniedServiceUnavailable
+        {
+            return Err(RpcError::InvalidFieldValue {
+                field: "server.encrypted_synthetic_scaffold",
+                reason: "requires locked identity-only unavailable negotiation",
+            });
+        }
+    } else if disposition == WriteDisposition::DeniedServiceUnavailable {
+        return Err(RpcError::InvalidFieldValue {
+            field: "server.write_disposition",
+            reason: "service-unavailable disposition belongs only to the encrypted scaffold",
+        });
+    }
     let expected_reason = match disposition {
         WriteDisposition::Allowed => "",
         WriteDisposition::DeniedMajorVersion => "MAJOR_VERSION_MISMATCH",
         WriteDisposition::DeniedUnknownCapability => "UNKNOWN_WRITE_CAPABILITY",
         WriteDisposition::DeniedClientTooOld => "CLIENT_VERSION_BELOW_MINIMUM",
+        WriteDisposition::DeniedServiceUnavailable => ENCRYPTED_SYNTHETIC_UNAVAILABLE,
         WriteDisposition::Unspecified => {
             return Err(RpcError::UnknownEnumValue {
                 field: "server.write_disposition",
@@ -852,7 +869,7 @@ mod tests {
     use crate::{
         ServerHandshakeConfig,
         generated::{ClientHandshake, DataPosture, ProtocolVersion},
-        handshake::negotiate_handshake,
+        handshake::{negotiate_handshake, storage_schema_for},
     };
 
     /// A well-formed receipt digest. Its value carries nothing.
@@ -901,7 +918,7 @@ mod tests {
     /// compile-fail case that keeps it that way. So this takes the handshake
     /// the emitter actually produced and moves exactly the two fields the
     /// admitted branch moves — the schema, through the emitter's own
-    /// `storage_schema_for`, and the posture. What it proves is the binding:
+    /// legacy `storage_schema_for` wrapper, and the posture. What it proves is the binding:
     /// the pair the emitter would send is accepted, and both crossed pairs are
     /// refused, so acceptance is not indifference.
     #[test]
@@ -914,6 +931,40 @@ mod tests {
         admitted.policy = Some(admitted_policy());
         admitted.storage_schema = Some(storage_schema_for(true));
         validate_server_handshake(&admitted)?;
+        assert_eq!(admitted.vault_read_formats, ["PLAINTEXT_SYNTHETIC_V1"]);
+        assert_eq!(admitted.vault_write_format, "PLAINTEXT_SYNTHETIC_V1");
+        let envelope = LocalCoreEnvelope {
+            payload: Some(local_core_envelope::Payload::ServerHandshake(
+                admitted.clone(),
+            )),
+        };
+        let bytes = crate::encode_envelope_frame(&envelope, FrameClass::Handshake)?;
+        assert_eq!(
+            crate::decode_envelope_frame(&bytes, FrameClass::Handshake)?,
+            envelope
+        );
+        for case in 0..4 {
+            let mut crossed = admitted.clone();
+            match case {
+                0 => crossed.vault_write_format = "AEAD_CHUNKED_V2".to_owned(),
+                1 => crossed
+                    .capability_ids
+                    .insert(0, ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY.to_owned()),
+                2 => {
+                    crossed.write_disposition = WriteDisposition::DeniedServiceUnavailable as i32;
+                    crossed.write_denial_reason = ENCRYPTED_SYNTHETIC_UNAVAILABLE.to_owned();
+                }
+                _ => crossed
+                    .policy
+                    .as_mut()
+                    .ok_or(RpcError::MissingField {
+                        field: "test.policy",
+                    })?
+                    .admission_receipt_digest
+                    .clear(),
+            }
+            assert!(validate_server_handshake(&crossed).is_err());
+        }
 
         let mut admitted_with_phase1_schema = admitted.clone();
         admitted_with_phase1_schema.storage_schema = Some(storage_schema_for(false));

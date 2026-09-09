@@ -23,8 +23,9 @@ crates/desktop/src/local_client.rs [priv] async fn connect(endpoint: &str) -> io
 crates/desktop/src/local_client.rs [priv] fn parse_session(contents: &str) -> Result<(&str, &str), &'static str> |4bdc035b4ea6f5c1
 crates/desktop/src/local_client.rs [priv] fn validate_detail_decision_reply( request: &academic_rpc::details::DetailDecisionRequest, reply: &academic_rpc::details::DetailReply, ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> |7ced836e851619c4
 crates/desktop/src/local_client.rs [priv] impl LocalClient
+crates/desktop/src/local_client.rs [priv] impl LocalClient :: async fn detail_protocol( mut stream: Box<dyn ClientStream>, nonce: &str, request: &academic_rpc::domain_details::wire::DetailFrameRequest, ) -> Result< academic_rpc::domain_details::wire::DetailFrameReply, Box<dyn std::error::Error + Send + Sync>, > |856d1506b506256c
 crates/desktop/src/local_client.rs [priv] impl LocalClient :: async fn exchange( &self, command: DesktopCommand, ) -> Result<RuntimeReply, Box<dyn std::error::Error + Send + Sync>> |fbc78ca16b64044d
-crates/desktop/src/local_client.rs [priv] impl LocalClient :: async fn exchange_detail_frame( &self, request: &academic_rpc::domain_details::wire::DetailFrameRequest, ) -> Result< academic_rpc::domain_details::wire::DetailFrameReply, Box<dyn std::error::Error + Send + Sync>, > |d30be2388ea36ed7
+crates/desktop/src/local_client.rs [priv] impl LocalClient :: async fn exchange_detail_frame( &self, request: &academic_rpc::domain_details::wire::DetailFrameRequest, ) -> Result< academic_rpc::domain_details::wire::DetailFrameReply, Box<dyn std::error::Error + Send + Sync>, > |645267d26d3a81fb
 crates/desktop/src/local_client.rs [priv] impl LocalClient :: async fn exchange_details( &self, request: academic_rpc::details::DetailRequest, ) -> Result<RuntimeReply, Box<dyn std::error::Error + Send + Sync>> |ad7995c02a8c8589
 crates/desktop/src/local_client.rs [priv] impl LocalClient :: async fn protocol( &self, command: DesktopCommand, mut stream: &mut Box<dyn ClientStream>, nonce: &str, ) -> Result<RuntimeReply, Box<dyn std::error::Error + Send + Sync>> |187858bdab2e118a
 crates/desktop/src/local_client.rs [priv] impl LocalClient :: fn imported_reply( &self, request: academic_rpc::details::DetailRequest, reply: academic_rpc::details::DetailReply, ) -> Result<RuntimeReply, Box<dyn std::error::Error + Send + Sync>> |aca5e755b1132faf
@@ -37,6 +38,7 @@ crates/desktop/src/local_client.rs [priv] mod tests :: #[test] fn session_metada
 crates/desktop/src/local_client.rs [priv] mod tests :: #[tokio::test] async fn delayed_retry_poll_never_opens_after_deadline() |8393a208fd1f11a6
 crates/desktop/src/local_client.rs [priv] mod tests :: #[tokio::test] async fn retry_budget_and_nontransient_errors_remain_bounded() |df061f53a0cad20e
 crates/desktop/src/local_client.rs [priv] mod tests :: #[tokio::test] async fn runtime_requires_matching_core_ack_and_surfaces_locked_state() -> Result<(), Box<dyn std::error::Error + Send + Sync>> |71c46e7b2b9c848f
+crates/desktop/src/local_client.rs [priv] mod tests :: #[tokio::test] async fn unsolicited_encrypted_scaffold_closes_before_domain_command() -> Result<(), Box<dyn std::error::Error + Send + Sync>> |32e9455baf5a3a0b
 crates/desktop/src/local_client.rs [priv] mod tests :: async fn round_trip( lock_state: ProfileLockState, mismatched_receipt: bool, drop_ack: bool, ) -> Result<RuntimeReply, Box<dyn std::error::Error + Send + Sync>> |550638827708420a
 crates/desktop/src/local_client.rs [priv] mod tests :: use academic_rpc::{ ServerHandshakeConfig, generated::{ImmutableReceipt, MutableResponse}, negotiate_handshake, } |33102a64b477edb2
 crates/desktop/src/local_client.rs [priv] mod tests :: use super::* |19dbf88307d136ac

@@ -2868,6 +2868,8 @@ const DESKTOP_SHIPPING_CLOSURE = [
  */
 // Instant/future/cell/Cell cover the monotonic deadline and controlled tests.
 const DESKTOP_PATH_ROOTS = [
+  // D3's native refusal test imports only the RPC identity-support constant.
+  "handshake",
   // Closed v3 read DTOs share the authenticated IPC transport; no store/key API.
   "domain_details",
   "wire",
