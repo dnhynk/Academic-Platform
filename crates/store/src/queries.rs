@@ -123,7 +123,160 @@ pub fn signed_history_snapshot(
     reader: &mut ReaderConnection,
 ) -> Result<SignedHistorySnapshot, QueryError> {
     let transaction = reader.begin_deferred()?;
-    let (revision, head, count, bytes): (i64, i64, i64, i64) = transaction.query_row(
+    let snapshot = signed_history_from_connection(&transaction)?;
+    transaction.commit().map_err(StoreError::from)?;
+    Ok(snapshot)
+}
+
+/// Explicit context and both time coordinates for a bounded source read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DomainHistoryRequest {
+    pub domain_id: DomainId,
+    pub scope_id: ScopeId,
+    pub known_at_accept_seq: Option<u64>,
+    pub valid_at: TimestampMillis,
+}
+
+/// Original canonical source material bound to the requested context and time.
+///
+/// These are verification inputs, not a verified domain result. The caller must
+/// authenticate the original envelopes against its own authorizations and replay
+/// their closure before interpreting any domain claim or referenced artifact.
+#[derive(Debug)]
+pub struct DomainHistorySnapshot {
+    pub domain_id: DomainId,
+    pub scope_id: ScopeId,
+    pub coordinates: academic_domain::temporal::TimeCoordinates,
+    pub history: SignedHistorySnapshot,
+    pub source_authority: ProjectionSourceAuthority,
+    /// None means this profile cannot hold the aggregate lane, not an empty query.
+    pub aggregates: Option<crate::timeline::AggregateTimelineSnapshot>,
+}
+
+/// Selects a latest or exact historical watermark once, in the same transaction
+/// as the original signed history, replica revision and source-outbox authority.
+///
+/// This accessor neither admits a registration nor reads a disposable sidecar.
+/// The supplied valid time is retained beside known time for resolution over the
+/// returned immutable history. Scope registration must be verified during that
+/// replay; this accessor never chooses a scope or treats one as another.
+pub fn domain_history_snapshot(
+    reader: &mut ReaderConnection,
+    request: &DomainHistoryRequest,
+) -> Result<DomainHistorySnapshot, QueryError> {
+    let transaction = reader.begin_deferred()?;
+    let history = signed_history_from_connection(&transaction)?;
+    let known_at_accept_seq = request
+        .known_at_accept_seq
+        .unwrap_or(history.accept_seq_head);
+    let source_authority = projection_source_authority_from_connection(
+        &transaction,
+        request.domain_id,
+        known_at_accept_seq,
+    )?;
+    if source_authority.latest_accept_seq != history.accept_seq_head {
+        return Err(QueryError::Corrupt(
+            "domain history source watermark mismatch",
+        ));
+    }
+    let coordinates =
+        academic_domain::temporal::TimeCoordinates::new(known_at_accept_seq, request.valid_at);
+    let aggregates = match crate::timeline::aggregate_timeline_from_connection(
+        &transaction,
+        &crate::timeline::AggregateTimelineRequest {
+            domain_id: request.domain_id,
+            coordinates,
+        },
+    ) {
+        Ok(snapshot) => Some(snapshot),
+        Err(QueryError::AggregatesAbsent { .. }) => None,
+        Err(error) => return Err(error),
+    };
+    transaction.commit().map_err(StoreError::from)?;
+    Ok(DomainHistorySnapshot {
+        domain_id: request.domain_id,
+        scope_id: request.scope_id,
+        coordinates,
+        history,
+        source_authority,
+        aggregates,
+    })
+}
+
+impl DomainHistorySnapshot {
+    /// Cross-checks the source-outbox identity against the independently
+    /// authenticated original envelopes. This does not supply a trust anchor.
+    pub fn verify_batch_binding(
+        &self,
+        batches: &[academic_contracts::VerifiedBatch],
+    ) -> Result<(), QueryError> {
+        if batches.len() != self.history.batches.len()
+            || u64::try_from(batches.len()).ok() != Some(self.history.revision)
+            || self.source_authority.latest_outbox_seq != self.history.revision
+        {
+            return Err(QueryError::Corrupt("source history revision mismatch"));
+        }
+        let count = self
+            .history
+            .batches
+            .iter()
+            .take_while(|batch| batch.accept_seq_start <= self.coordinates.known_at_accept_seq)
+            .count();
+        let count =
+            u64::try_from(count).map_err(|_| QueryError::Corrupt("source count overflow"))?;
+        let mut material = b"ACADEMIC_PROJECTION_SOURCE_LEDGER_V1\0".to_vec();
+        material.extend_from_slice(self.domain_id.as_bytes());
+        material.extend_from_slice(&self.coordinates.known_at_accept_seq.to_be_bytes());
+        material.extend_from_slice(&count.to_be_bytes());
+        let mut next = 1_u64;
+        let mut source_outbox_seq = 0_u64;
+        for (index, (stored, verified)) in self.history.batches.iter().zip(batches).enumerate() {
+            let length = u64::try_from(verified.batch().events.len())
+                .map_err(|_| QueryError::Corrupt("source batch size overflow"))?;
+            let end = next
+                .checked_add(length)
+                .and_then(|n| n.checked_sub(1))
+                .ok_or(QueryError::Corrupt("source range overflow"))?;
+            let revision = u64::try_from(index)
+                .ok()
+                .and_then(|n| n.checked_add(1))
+                .ok_or(QueryError::Corrupt("source revision overflow"))?;
+            if verified.source_envelope() != stored.envelope
+                || stored.accept_seq_start != next
+                || stored.accept_seq_end != end
+            {
+                return Err(QueryError::Corrupt("original signed source range mismatch"));
+            }
+            if next <= self.coordinates.known_at_accept_seq {
+                material.extend_from_slice(&revision.to_be_bytes());
+                material.extend_from_slice(verified.batch().batch_id.as_bytes());
+                material.extend_from_slice(&next.to_be_bytes());
+                material.extend_from_slice(&end.to_be_bytes());
+                material.extend_from_slice(&revision.to_be_bytes());
+                material.extend_from_slice(&crate::outbox::event_kind_mask(verified));
+                material.extend_from_slice(verified.payload_hash().as_bytes());
+                if end <= self.coordinates.known_at_accept_seq {
+                    source_outbox_seq = revision;
+                }
+            }
+            next = end
+                .checked_add(1)
+                .ok_or(QueryError::Corrupt("source head overflow"))?;
+        }
+        if next.checked_sub(1) != Some(self.history.accept_seq_head)
+            || source_outbox_seq != self.source_authority.source_outbox_seq
+            || ContentDigest::sha256(&material) != self.source_authority.source_ledger_digest
+        {
+            return Err(QueryError::Corrupt("signed source authority mismatch"));
+        }
+        Ok(())
+    }
+}
+
+fn signed_history_from_connection(
+    connection: &Connection,
+) -> Result<SignedHistorySnapshot, QueryError> {
+    let (revision, head, count, bytes): (i64, i64, i64, i64) = connection.query_row(
         "SELECT profile_revision, next_accept_seq - 1, (SELECT count(*) FROM ledger_batch), (SELECT coalesce(sum(length(signed_envelope)), 0) FROM ledger_batch) FROM replica_state WHERE singleton = 1",
         [], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
     ).map_err(StoreError::from)?;
@@ -132,7 +285,7 @@ pub fn signed_history_snapshot(
         nonnegative_u64(bytes, "history bytes")?,
     )?;
     let batches = {
-        let mut statement = transaction.prepare("SELECT signed_envelope, accept_seq_start, accept_seq_end FROM ledger_batch ORDER BY accept_seq_start").map_err(StoreError::from)?;
+        let mut statement = connection.prepare("SELECT signed_envelope, accept_seq_start, accept_seq_end FROM ledger_batch ORDER BY accept_seq_start").map_err(StoreError::from)?;
         let rows = statement
             .query_map([], |row| {
                 Ok((
@@ -153,7 +306,6 @@ pub fn signed_history_snapshot(
         }
         batches
     };
-    transaction.commit().map_err(StoreError::from)?;
     Ok(SignedHistorySnapshot {
         revision: nonnegative_u64(revision, "history revision")?,
         accept_seq_head: nonnegative_u64(head, "history head")?,

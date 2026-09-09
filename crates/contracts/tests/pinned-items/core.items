@@ -71,7 +71,84 @@ crates/core/src/details.rs [pub] const RELATION_PREDICATE: &str |761a141b3dc577e
 crates/core/src/details.rs [pub] impl DetailContext :: fn handle( &self, profile: &SyntheticProfile, service: &mut AcceptanceService, request: &DetailRequest, now: TimestampMillis, ) -> Result<DetailReply, DetailError> |c5ac121566f0de60
 crates/core/src/details.rs [pub] impl DetailContext :: fn new( profile: &SyntheticProfile, authorization: DeviceAuthorization, signing_key: SigningKey, mut trust: Vec<DeviceAuthorization>, ) -> Result<Self, DetailError> |db844dda5d4302f1
 crates/core/src/details.rs [pub] impl DetailContext :: fn profile_id(&self) -> &str |989df76243de7ee7
+crates/core/src/details.rs [pub] mod domain
 crates/core/src/details.rs [pub] struct DetailContext |df1ad718194fb999
+crates/core/src/details/domain.rs [priv] #[cfg(test)] mod tests
+crates/core/src/details/domain.rs [priv] const POLICY_VERSION: &str |928320c720b17884
+crates/core/src/details/domain.rs [priv] const SNAPSHOT_ADAPTER: &str |84ea3ce4b679a6eb
+crates/core/src/details/domain.rs [priv] const SOURCE_REF: &str |ec620215c127f82f
+crates/core/src/details/domain.rs [priv] fn actor(actor: &Actor) -> dto::ActorRef |23acd945b98b6142
+crates/core/src/details/domain.rs [priv] fn available<T>(value: T, refs: Vec<String>) -> ReadResult<dto::Field<T>> |7b59a7a006c326e9
+crates/core/src/details/domain.rs [priv] fn locator(locator: &academic_domain::EvidenceLocator) -> dto::Locator |5eb4d77106536e53
+crates/core/src/details/domain.rs [priv] fn policy_entries() -> ReadResult<BTreeMap<academic_domain::PredicateId, AuthorityPolicy>> |6e9b24c7945b5960
+crates/core/src/details/domain.rs [priv] fn query_failure(error: QueryError) -> dto::ReadFailure |47d4263686bf8330
+crates/core/src/details/domain.rs [priv] fn registration_interval(payload: &EventPayload) -> Option<(ValidInterval, Option<ContentDigest>)> |4b51792ee8f2029a
+crates/core/src/details/domain.rs [priv] fn unavailable_groups(kinds: &[dto::GroupKind]) -> Vec<dto::RelationGroup> |e8f7e183931c63b0
+crates/core/src/details/domain.rs [priv] fn wire_policy(policy: AuthorityPolicy) -> dto::AuthorityPolicy |bbfaa208dd7dbd6d
+crates/core/src/details/domain.rs [priv] impl DetailContext
+crates/core/src/details/domain.rs [priv] impl DetailContext :: fn domain_projection( &self, profile: &SyntheticProfile, service: &AcceptanceService, request: &dto::DomainReadRequest, now: TimestampMillis, ) -> ReadResult<dto::DomainProjection> |ef5988fe85ee589f
+crates/core/src/details/domain.rs [priv] impl ReadSnapshot
+crates/core/src/details/domain.rs [priv] impl ReadSnapshot :: fn authenticate( source: DomainHistorySnapshot, trust: &[academic_contracts::DeviceAuthorization], ) -> ReadResult<Self> |ab29027a1f520ea9
+crates/core/src/details/domain.rs [priv] impl ReadSnapshot :: fn domain(&self) -> DomainId |822629f0407a9bff
+crates/core/src/details/domain.rs [priv] impl ReadSnapshot :: fn events(&self) -> impl Iterator<Item = &AcceptedEvent> |e685713b448a5c84
+crates/core/src/details/domain.rs [priv] impl ReadSnapshot :: fn known(&self) -> u64 |dffce2e262cae51f
+crates/core/src/details/domain.rs [priv] impl ReadSnapshot :: fn resolve( &self, subject: EntityId, predicate: &str, policy: AuthorityPolicy, ) -> ReadResult<ResolutionResult> |8a41c42d57944c7c
+crates/core/src/details/domain.rs [priv] impl ReadSnapshot :: fn scope(&self) -> ScopeId |ff1e7796d1caab07
+crates/core/src/details/domain.rs [priv] impl ReadSnapshot :: fn valid(&self) -> TimestampMillis |9fd14e4bd9bedb35
+crates/core/src/details/domain.rs [priv] impl ReadSnapshot :: fn verify_aggregate_rows(&self) -> ReadResult<()> |a9daa95c2fdc3635
+crates/core/src/details/domain.rs [priv] impl ReadSnapshot :: fn verify_context(&self) -> ReadResult<()> |95a9b3ae2a469e6c
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a>
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn anchored_node_type( &mut self, entity: EntityId, ) -> ReadResult<Option<academic_domain::predicates::NodeType>> |a70aa9310ca07286
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn artifact(&mut self, descriptor: &ArtifactDescriptor) -> ReadResult<String> |b12d8d534e10dde8
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn claim(&mut self, claim: &Claim, policy: AuthorityPolicy) -> ReadResult<String> |35f940e32645a238
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn concept_groups( &mut self, subject: &dto::Subject, entity: EntityId, ) -> ReadResult<Vec<dto::RelationGroup>> |a392de5d7ad836e8
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn entity_kind(&mut self, entity: EntityId) -> ReadResult<Option<EntityKind>> |832c94dae27b7647
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn event( &mut self, accepted: &AcceptedEvent, scope_id: Option<ScopeId>, ) -> ReadResult<(dto::OriginEvent, String)> |9a701faa7f1acdd9
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn evidence(&mut self, id: EvidenceId) -> ReadResult<dto::EvidenceRef> |498edcbd7684ebc6
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn finish(self) -> ReadResult<dto::DomainProjection> |746228a3c1864838
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn insert(&mut self, reference: String, origin: dto::ProvenanceOrigin) -> ReadResult<String> |9acd530706e462f4
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn new( snapshot: &'a ReadSnapshot, service: &'a AcceptanceService, profile_id: &str, ) -> ReadResult<Self> |7c7582e358ec3e7c
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn query(&mut self, query: &dto::Query) -> ReadResult<()> |03b9d6d204a50526
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn registration(&mut self, accepted: &AcceptedEvent) -> ReadResult<String> |52e04a7f53a26424
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn title(&mut self, entity: EntityId) -> ReadResult<dto::Field<String>> |00cbc9fc4d250ff4
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn user_decision(&mut self, claim: &Claim) -> ReadResult<dto::Field<dto::UserDecisionRef>> |20bf8a7b4260085c
+crates/core/src/details/domain.rs [priv] impl<'a> Projector<'a> :: fn witness( &mut self, reference: String, selection: dto::QuerySelection, count: usize, ) -> ReadResult<String> |bfac6c598564985f
+crates/core/src/details/domain.rs [priv] mod tests :: #[test] fn accepted_claims_keep_exact_text_scope_authority_and_original_coordinates() -> TestResult |3d059cfe5a1933aa
+crates/core/src/details/domain.rs [priv] mod tests :: #[test] fn an_interior_batch_selector_is_refused_without_rounding_or_current_fallback() -> TestResult |c634d1f332966455
+crates/core/src/details/domain.rs [priv] mod tests :: #[test] fn missing_source_body_is_unavailable_but_wrong_digest_is_refused() -> TestResult |dd779ff9437b8a57
+crates/core/src/details/domain.rs [priv] mod tests :: #[test] fn selected_profiles_and_exact_history_remain_bound_after_update_and_reopen() -> TestResult |9211b91371425f5e
+crates/core/src/details/domain.rs [priv] mod tests :: #[test] fn source_history_needs_independent_authorization_and_exact_binding() -> TestResult |c3955f98fc7c263f
+crates/core/src/details/domain.rs [priv] mod tests :: fn id<T: FromStr<Err = academic_domain::DomainError>>( number: u64, ) -> Result<T, academic_domain::DomainError> |307d526a4782f3ad
+crates/core/src/details/domain.rs [priv] mod tests :: impl DomainTestProfile
+crates/core/src/details/domain.rs [priv] mod tests :: impl DomainTestProfile :: fn accept(&mut self, payloads: Vec<EventPayload>) -> Result<(), Box<dyn Error>> |61b90177f5d2b3dc
+crates/core/src/details/domain.rs [priv] mod tests :: impl DomainTestProfile :: fn close(self) -> TestResult |407e194332103eaa
+crates/core/src/details/domain.rs [priv] mod tests :: impl DomainTestProfile :: fn new() -> Result<Self, Box<dyn Error>> |3e4d3ef4474256f6
+crates/core/src/details/domain.rs [priv] mod tests :: impl DomainTestProfile :: fn request(&self, scope: u64) -> Result<dto::DomainReadRequest, Box<dyn Error>> |35cd9e9ee5d55bbf
+crates/core/src/details/domain.rs [priv] mod tests :: impl DomainTestProfile :: fn service(profile: &SyntheticProfile) -> Result<AcceptanceService, Box<dyn Error>> |97a51dea6144ae50
+crates/core/src/details/domain.rs [priv] mod tests :: impl DomainTestProfile :: fn snapshot(&self, scope: u64, known: Option<u64>) -> Result<ReadSnapshot, Box<dyn Error>> |c0f1debb082fa8f2
+crates/core/src/details/domain.rs [priv] mod tests :: impl DomainTestProfile :: fn source( &mut self, scope: u64, number: u64, label: &str, ) -> Result<PathBuf, Box<dyn Error>> |bdb92476f12bee88
+crates/core/src/details/domain.rs [priv] mod tests :: static NEXT: AtomicU64 |33a00e420f25cedd
+crates/core/src/details/domain.rs [priv] mod tests :: struct DomainTestProfile |68e1b5f2dcd84b33
+crates/core/src/details/domain.rs [priv] mod tests :: type TestResult = Result<(), Box<dyn Error>> |9734d211689cdaf8
+crates/core/src/details/domain.rs [priv] mod tests :: use academic_contracts::{DeviceAuthorization, sign_batch} |818f12245bf56c7d
+crates/core/src/details/domain.rs [priv] mod tests :: use academic_domain::{ ArtifactRepresentation, AuthorityClass, BatchId, Confidentiality, DeviceId, EpistemicStatus, Event, EventId, EvidenceItem, EvidenceLocator, EvidenceRole, EvidenceStrength, MediaType, RetentionClass, ScopeDescriptor, UnsignedBatch, } |5dd58b5455fd8c13
+crates/core/src/details/domain.rs [priv] mod tests :: use academic_store::{ idempotency::AcceptanceCommand, path_policy::NativePathProbe, profile::{create_synthetic_profile, open_synthetic_profile}, } |c87308c994ddae0e
+crates/core/src/details/domain.rs [priv] mod tests :: use academic_vault::{ArtifactIngestRequest, DomainKeyring} |7d21d1e360575b29
+crates/core/src/details/domain.rs [priv] mod tests :: use ed25519_dalek::SigningKey |70ab5f7e036912da
+crates/core/src/details/domain.rs [priv] mod tests :: use std::{ error::Error, path::PathBuf, str::FromStr, sync::atomic::{AtomicU64, Ordering}, } |5b86c91ba95e0d09
+crates/core/src/details/domain.rs [priv] mod tests :: use super::* |19dbf88307d136ac
+crates/core/src/details/domain.rs [priv] struct Projector<'a> |4c2584f1b6261180
+crates/core/src/details/domain.rs [priv] struct ReadSnapshot |36f5b2208a33347d
+crates/core/src/details/domain.rs [priv] type ReadResult<T> = Result<T, dto::ReadFailure> |a16dcd063686597e
+crates/core/src/details/domain.rs [priv] use academic_contracts::{VerifiedBatch, verify_signed_batch} |2bd39787ad77b38d
+crates/core/src/details/domain.rs [priv] use academic_domain::{ Actor, ArtifactDescriptor, Claim, ClaimObject, ContentDigest, DomainId, EntityId, EventPayload, EvidenceId, ScopeId, TimestampMillis, ValidInterval, entity_registry::{EntityKind, PREDICATE_ENTITY_KIND, PREDICATE_ENTITY_LABEL, RegistryFact}, } |438591dfd9aa70bd
+crates/core/src/details/domain.rs [priv] use academic_ledger::{AcceptedEvent, AuthorityPolicy, ResolutionQuery, ResolutionResult} |f26b8f048b6437f5
+crates/core/src/details/domain.rs [priv] use academic_rpc::domain_details as dto |70c5d156414eaba4
+crates/core/src/details/domain.rs [priv] use academic_store::{ profile::SyntheticProfile, queries::{DomainHistoryRequest, DomainHistorySnapshot, QueryError, domain_history_snapshot}, } |190f119b7dfa9108
+crates/core/src/details/domain.rs [priv] use crate::{Core, service::AcceptanceService} |8daccbf0301bcafc
+crates/core/src/details/domain.rs [priv] use std::collections::{BTreeMap, BTreeSet} |52fe7659d3dc7429
+crates/core/src/details/domain.rs [priv] use super::{DetailContext, profile_identity} |f659cd2a3f919c10
+crates/core/src/details/domain.rs [pub] impl DetailContext :: fn read_domain( &self, profile: &SyntheticProfile, service: &AcceptanceService, request: &dto::DomainReadRequest, now: TimestampMillis, ) -> dto::DomainReadReply |f29ca596e7276aca
 crates/core/src/details/fixture.rs [priv] fn register_once( payloads: &mut Vec<EventPayload>, descriptor: academic_domain::ArtifactDescriptor, ) -> Result<(), DetailError> |396bccab8f421427
 crates/core/src/details/fixture.rs [priv] fn seal_source( service: &AcceptanceService, namespace: ContentDigest, label: &str, bytes: &[u8], payloads: &mut Vec<EventPayload>, ) -> Result<EvidenceId, DetailError> |553c2d8e51748728
 crates/core/src/details/fixture.rs [priv] use academic_contracts::sign_batch |02f207ffe9f1ddea
@@ -247,6 +324,7 @@ crates/core/src/local_service.rs [pub] #[derive(Debug, Error)] enum LocalService
 crates/core/src/local_service.rs [pub] const PHASE1_SYNTHETIC_FIXTURE_ID: &str |a3c74eff44996589
 crates/core/src/local_service.rs [pub] fn rejection_response( request: &MutableRequest, reason: &str, profile_revision: u64, ) -> Result<MutableResponse, LocalServiceError> |584788fcc94a8572
 crates/core/src/local_service.rs [pub] impl LocalService :: #[cfg(feature = "phase1-fault-injection")] fn handle_mutable_request_now_with_faults<F>( &mut self, request: &MutableRequest, faults: &F, ) -> Result<MutableResponse, LocalServiceError> where F: AcceptanceFaultInjector, |ddbceb637c4f3322
+crates/core/src/local_service.rs [pub] impl LocalService :: fn handle_detail_frame_now( &mut self, request: &academic_rpc::domain_details::wire::DetailFrameRequest, ) -> Result<academic_rpc::domain_details::wire::DetailFrameReply, LocalServiceError> |3eec396e5d55d1c9
 crates/core/src/local_service.rs [pub] impl LocalService :: fn handle_detail_request_now( &mut self, request: &academic_rpc::details::DetailRequest, ) -> Result<academic_rpc::details::DetailReply, LocalServiceError> |f7b2c77437721a25
 crates/core/src/local_service.rs [pub] impl LocalService :: fn handle_mutable_request( &mut self, request: &MutableRequest, accepted_at: TimestampMillis, ) -> Result<MutableResponse, LocalServiceError> |44f961767ebd8930
 crates/core/src/local_service.rs [pub] impl LocalService :: fn handle_mutable_request_now( &mut self, request: &MutableRequest, ) -> Result<MutableResponse, LocalServiceError> |4078cf3c5f684c4c

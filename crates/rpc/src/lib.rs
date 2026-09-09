@@ -10,6 +10,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 pub mod convert;
 pub mod details;
 pub mod digest;
+pub mod domain_details;
 pub mod error;
 pub mod frame;
 pub mod generated;

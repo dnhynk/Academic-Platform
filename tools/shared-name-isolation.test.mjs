@@ -539,6 +539,10 @@ const DISCRIMINATORS = new Set([
  */
 const SHARED_NAME_SITES = new Map([
   [
+    'crates/core/src/details/domain.rs :: base.join(format!("academic-domain-read-{}-{}",std::process::id(),NEXT.fetch_add(1,Ordering::Relaxed)))',
+    "UNIQUE: each domain-read synthetic test profile uses process id and its atomic counter beneath the task temporary root.",
+  ],
+  [
     'crates/keystore-platform/tests/macos_native.rs :: std::env::temp_dir().join(label.as_str().replace(\':\',"-"))',
     "SHARED, deliberately: the parent and its writer child derive the same task directory from the parent-generated label with 128 bits of OS randomness. The parent reserves it with create_dir; the child receives that exact label/path, checks the derived path, and writes only a create_new opaque blob. No independently generated test label is reused; cleanup removes only that task file and directory.",
   ],

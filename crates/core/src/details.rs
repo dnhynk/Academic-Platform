@@ -33,6 +33,8 @@ pub const RELATION_PREDICATE: &str = "detail.workspace.relation.v1";
 pub const DISPOSITION_PREDICATE: &str = "detail.workspace.disposition.v1";
 pub const PROJECTOR_VERSION: &str = "academic.details.v2";
 
+pub mod domain;
+
 #[cfg(any(test, feature = "synthetic-detail-fixtures"))]
 pub mod fixture;
 

@@ -754,7 +754,7 @@ const PINNED_PACKAGES: usize = 71;
 ///
 /// 11 748 over 43 packages before `P2-RF31`. The 28 packages that joined and
 /// the literal values that joined the fingerprint are the difference.
-const PINNED_ITEMS: usize = 18_477;
+const PINNED_ITEMS: usize = 18_772;
 
 /// The file holding one package's pinned item set.
 fn pin_path(repository: &Path, package: &str) -> PathBuf {
@@ -1593,7 +1593,17 @@ fn absolute_paths(code: &str) -> BTreeSet<String> {
 /// uses, over the nine crates that ship an executable. `connector` and
 /// `indexer` are absent because they reach nothing: their whole `main` reads
 /// `PROCESS_CLASS.capabilities()` through an import.
-const BINARY_REACHES: [(&str, &str, &str); 37] = [
+const BINARY_REACHES: [(&str, &str, &str); 39] = [
+    (
+        "daemon",
+        "academic_rpc::domain_details",
+        "the closed v3 read frame and response travel through the existing authenticated owner queue; no producer or ordinary relation writer",
+    ),
+    (
+        "desktop",
+        "academic_rpc::domain_details",
+        "the closed v3 native read request and provenance reply, independent of imported decision receipts and without a store or key dependency",
+    ),
     (
         "desktop",
         "academic_desktop::runtime",

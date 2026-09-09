@@ -338,7 +338,7 @@ where
     };
     let request = match envelope.payload {
         Some(local_core_envelope::Payload::DetailRequest(frame)) => {
-            let request: academic_rpc::details::DetailRequest =
+            let request: academic_rpc::domain_details::wire::DetailFrameRequest =
                 academic_rpc::details::decode(&frame.canonical_json)?;
             if handshake.write_disposition
                 != academic_rpc::generated::WriteDisposition::Allowed as i32
@@ -360,8 +360,16 @@ where
                 .details(request)
                 .await
                 .map_err(|error| DaemonError::ListenerTask(error.to_string()))??;
-            if let Some(state) = &response.details {
-                writer.observe_revision(state.revision);
+            match &response {
+                academic_rpc::domain_details::wire::DetailFrameReply::Imported(reply) => {
+                    if let Some(state) = &reply.details {
+                        writer.observe_revision(state.revision);
+                    }
+                }
+                academic_rpc::domain_details::wire::DetailFrameReply::Domain(
+                    academic_rpc::domain_details::DomainReadReply::Ready { projection, .. },
+                ) => writer.observe_revision(projection.binding.revision),
+                academic_rpc::domain_details::wire::DetailFrameReply::Domain(_) => {}
             }
             let frame = LocalCoreEnvelope {
                 payload: Some(local_core_envelope::Payload::DetailResponse(

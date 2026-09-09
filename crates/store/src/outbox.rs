@@ -134,7 +134,7 @@ pub fn read_outbox(reader: &ReaderConnection) -> Result<Vec<OutboxEntry>, Outbox
     rows.into_iter().map(decode_row).collect()
 }
 
-fn event_kind_mask(verified: &VerifiedBatch) -> [u8; 8] {
+pub(crate) fn event_kind_mask(verified: &VerifiedBatch) -> [u8; 8] {
     let mut value = 0_u64;
     for event in &verified.batch().events {
         let bit = match &event.payload {

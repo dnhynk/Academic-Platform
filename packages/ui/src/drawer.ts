@@ -27,6 +27,8 @@ export interface DrawerEvidenceLine {
 export interface DrawerState {
   /** The pinned entity, or `null` when nothing is selected. */
   readonly selected: EntityRef | null;
+  /** Accepted evidence snapshot pinned by the profile-backed detail surface. */
+  readonly pinned?: { readonly title: string; readonly evidence: readonly DrawerEvidenceLine[] };
 }
 
 /** The drawer as it appears inside one rendered view. */
@@ -67,6 +69,7 @@ export function renderDrawer(state: DrawerState): DrawerPanel {
       evidence: [],
     };
   }
+  if (state.pinned) return { side: DRAWER_SIDE, selected: state.selected, title: state.pinned.title, evidence: state.pinned.evidence };
   const entity = entityFor(state.selected);
   if (entity === undefined) {
     throw new Error(`the drawer pins an entity the corpus does not hold: ${state.selected.id}`);
