@@ -5515,6 +5515,29 @@ test("encrypted_session_graphs_exclude_every_plaintext_consumer", () => {
     assert.ok(unsupported.includes(present), `legacy dev control lost ${present}`);
 });
 
+test("encrypted_session_host_stays_plaintext_under_workspace_fault_selection", async () => {
+  const packages = ["academic-core", "academic-daemon", "academic-portability",
+    "academic-projections", "academic-test-support", "academic-vault"];
+  const features = packages.map((name) => `${name}/phase1-fault-injection`).join(",");
+  const workflow = await readFile(".github/workflows/ci.yml", "utf8");
+  assert.ok(workflow.includes(
+    `cargo clippy --workspace --all-targets --locked --features ${features} -- -D warnings`,
+  ), "the regression must select the existing CI fault-feature union exactly");
+  const run = spawnSync("cargo", [
+    "tree", "--locked", "--offline", "--workspace", "--edges", "normal,build,dev",
+    "--format", "{p}|{f}", "--features", features,
+  ], { encoding: "utf8", maxBuffer: CARGO_OUTPUT_BYTES });
+  assert.equal(run.status, 0, run.stderr);
+  const tree = run.stdout.replaceAll(/\([^)]*\)/gu, "");
+  for (const name of packages)
+    assert.match(tree, new RegExp(`${name}[^\\n]*\\|[^\\n]*phase1-fault-injection`, "u"));
+  for (const present of ["plaintext-core", "plaintext-daemon", "bundled-sqlite"])
+    assert.ok(tree.includes(present), `fault graph lost ${present}`);
+  for (const absent of ["sqlcipher-store", "encrypted-synthetic-core",
+    "encrypted-synthetic-daemon", "encrypted-synthetic-tests"])
+    assert.equal(tree.includes(absent), false, `fault graph selected ${absent}`);
+});
+
 test("encrypted_session_test_targets_and_shipping_boundary_are_closed", () => {
   const host = packagesByName.get("academic-encrypted-session-tests");
   assert.deepEqual(host.features.default, []);
@@ -6207,12 +6230,12 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
   assert.deepEqual(d1Receipt.default_features, []);
   const d1Edges = {
     "academic-contracts": { version: "0.1.0", default_features: true, features: [] },
-    "academic-core": { version: "0.1.0", default_features: false, features: ["encrypted-synthetic-core"] },
+    "academic-core": { version: "0.1.0", default_features: false, features: [] },
     "academic-crypto": { version: "0.1.0", default_features: true, features: [] },
-    "academic-daemon": { version: "0.1.0", default_features: false, features: ["encrypted-synthetic-daemon"] },
+    "academic-daemon": { version: "0.1.0", default_features: false, features: [] },
     "academic-domain": { version: "0.1.0", default_features: true, features: [] },
-    "academic-store": { version: "0.1.0", default_features: false, features: ["sqlcipher-store"] },
-    "academic-vault": { version: "0.1.0", default_features: true, features: ["aead-objects"] },
+    "academic-store": { version: "0.1.0", default_features: false, features: [] },
+    "academic-vault": { version: "0.1.0", default_features: true, features: [] },
     "ed25519-dalek": { version: "2.2.0", default_features: true, features: [] },
   };
   assert.deepEqual(d1Receipt.optional_normal_dependencies, d1Edges);
@@ -6229,8 +6252,12 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     assert.deepEqual(edge.features, expected.features);
     assert.equal(packagesByName.get(edge.name).version, expected.version);
   }
+  const d1Forwards = ["academic-core/encrypted-synthetic-core",
+    "academic-daemon/encrypted-synthetic-daemon", "academic-store/sqlcipher-store",
+    "academic-vault/aead-objects"];
+  assert.deepEqual(d1Receipt.encrypted_test_feature_forwards, d1Forwards);
   assert.deepEqual(d1Host.features["encrypted-synthetic-tests"].toSorted(),
-    Object.keys(d1Edges).map((name) => `dep:${name}`).toSorted());
+    [...Object.keys(d1Edges).map((name) => `dep:${name}`), ...d1Forwards].toSorted());
   assert.deepEqual(d1Host.targets.filter((target) =>
     target.kind.includes("bin") || target.kind.includes("custom-build")), []);
   assert.equal(d1Receipt.test_feature, "encrypted-synthetic-tests");

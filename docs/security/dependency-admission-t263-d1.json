@@ -27,16 +27,22 @@
   ],
   "optional_normal_dependencies": {
     "academic-contracts": { "version": "0.1.0", "default_features": true, "features": [] },
-    "academic-core": { "version": "0.1.0", "default_features": false, "features": ["encrypted-synthetic-core"] },
+    "academic-core": { "version": "0.1.0", "default_features": false, "features": [] },
     "academic-crypto": { "version": "0.1.0", "default_features": true, "features": [] },
-    "academic-daemon": { "version": "0.1.0", "default_features": false, "features": ["encrypted-synthetic-daemon"] },
+    "academic-daemon": { "version": "0.1.0", "default_features": false, "features": [] },
     "academic-domain": { "version": "0.1.0", "default_features": true, "features": [] },
-    "academic-store": { "version": "0.1.0", "default_features": false, "features": ["sqlcipher-store"] },
-    "academic-vault": { "version": "0.1.0", "default_features": true, "features": ["aead-objects"] },
+    "academic-store": { "version": "0.1.0", "default_features": false, "features": [] },
+    "academic-vault": { "version": "0.1.0", "default_features": true, "features": [] },
     "ed25519-dalek": { "version": "2.2.0", "default_features": true, "features": [] }
   },
   "default_features": [],
   "test_feature": "encrypted-synthetic-tests",
+  "encrypted_test_feature_forwards": [
+    "academic-core/encrypted-synthetic-core",
+    "academic-daemon/encrypted-synthetic-daemon",
+    "academic-store/sqlcipher-store",
+    "academic-vault/aead-objects"
+  ],
   "test_target": "encrypted_session",
   "why_this_dependency_belongs_inside_its_trust_boundary": "The daemon retains its existing unconditional dev dependencies on plaintext core fixtures, portability and projections. This separate non-publishing, default-empty package selects only the encrypted core/daemon libraries and existing profile/vault/recipient APIs as optional normal dependencies, so its integration target does not inherit daemon dev edges. No package depends on this host, and it has no build script or product binary. Recipient and recovery material exists only in its required-feature test target. Direct encrypted daemon --all-targets is deliberately unsupported.",
   "advisory_path": "Existing external versions, checksums and advisory paths remain those of docs/security/dependency-admission-phase1.json and docs/security/dependency-admission-phase2-k1.json, together with the existing SQLCipher and AEAD feature reviews in tools/phase1-scaffold-policy.test.mjs; no external tuple, provider feature or dependency source is admitted here.",

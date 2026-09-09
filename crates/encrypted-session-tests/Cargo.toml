@@ -19,16 +19,20 @@ encrypted-synthetic-tests = [
   "dep:academic-store",
   "dep:academic-vault",
   "dep:ed25519-dalek",
+  "academic-core/encrypted-synthetic-core",
+  "academic-daemon/encrypted-synthetic-daemon",
+  "academic-store/sqlcipher-store",
+  "academic-vault/aead-objects",
 ]
 
 [dependencies]
-academic-core = { path = "../core", default-features = false, features = ["encrypted-synthetic-core"], optional = true }
-academic-daemon = { path = "../daemon", default-features = false, features = ["encrypted-synthetic-daemon"], optional = true }
+academic-core = { path = "../core", default-features = false, optional = true }
+academic-daemon = { path = "../daemon", default-features = false, optional = true }
 academic-contracts = { path = "../contracts", optional = true }
 academic-crypto = { path = "../crypto", optional = true }
 academic-domain = { path = "../domain", optional = true }
-academic-store = { path = "../store", default-features = false, features = ["sqlcipher-store"], optional = true }
-academic-vault = { path = "../vault", features = ["aead-objects"], optional = true }
+academic-store = { path = "../store", default-features = false, optional = true }
+academic-vault = { path = "../vault", optional = true }
 ed25519-dalek = { workspace = true, optional = true }
 
 [[test]]

@@ -28,6 +28,13 @@ legacy dev dependencies intentionally request plaintext fixtures, projections
 and portability. Use the isolated test host. Policy checks inspect actual
 package-selected normal/build/dev trees and inventory every existing target.
 
+The host requests its four encrypted/AEAD dependency features only through
+`encrypted-synthetic-tests`. Its optional dependency declarations request no
+features themselves: a qualified workspace fault-feature selector can activate
+an optional dependency independently of the host's test feature. Such activation
+must preserve the plaintext fault lane. The policy regression selects the exact
+existing CI workspace fault-feature union and rejects encrypted-lane activation.
+
 ## Session construction and lifetime
 
 `EncryptedProfileSession::open` consumes a `VaultMasterKey` unlocked by trusted
