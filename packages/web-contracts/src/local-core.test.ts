@@ -9,7 +9,7 @@ const protoUrl = new URL(
   "../../../schemas/proto/academic/v1/local_core.proto",
   import.meta.url,
 );
-const expectedProtoSha256 = "7b6004d4a36e2ce1b84b8f58be5943e380b516f1806ac7832115e6187f4d7724";
+const expectedProtoSha256 = "860c55d7c07d51443747111f2ed44deb7346b104949787b1b5eb48909cfcd520";
 const requestFrameHex = "000000b61ab3010a10000102030405060708090a0b0c0d0e0f1210101112131415161718191a1b1c1d1e1f1a20202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f2220404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f28ffffffffffffffffff01322b6c6561726e696e672d706c6174666f726d2e6c6f63616c2e73796e7468657469632d696e676573742e763152110a0f7369676e65642d62617463682d7632";
 const responseFrameHex = "000001062283020a10000102030405060708090a0b0c0d0e0f10011a084143434550544544229d010a10606162636465666768696a6b6c6d6e6f1210000102030405060708090a0b0c0d0e0f1a10101112131415161718191a1b1c1d1e1f2220202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f2a20404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f30ffffffffffffffffff013a1608feffffffffffffffff0110ffffffffffffffffff0128ffffffffffffffffff01321608feffffffffffffffff0110ffffffffffffffffff013a20808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f";
 
@@ -83,6 +83,17 @@ void test("local core Proto tags, oneofs, and reserved bands are drift-pinned", 
   const root = protobuf.parse(protoBytes.toString("utf8"), { keepCase: true }).root;
   const envelope = root.lookupType("academic.v1.LocalCoreEnvelope");
   const mutableRequest = root.lookupType("academic.v1.MutableRequest");
+  const writeDisposition = root.lookupEnum("academic.v1.WriteDisposition");
+
+  assert.deepEqual(Object.fromEntries(Object.entries(writeDisposition.values)), {
+    WRITE_DISPOSITION_UNSPECIFIED: 0,
+    WRITE_DISPOSITION_ALLOWED: 1,
+    WRITE_DISPOSITION_DENIED_MAJOR_VERSION: 2,
+    WRITE_DISPOSITION_DENIED_UNKNOWN_CAPABILITY: 3,
+    WRITE_DISPOSITION_DENIED_CLIENT_TOO_OLD: 4,
+    WRITE_DISPOSITION_DENIED_SERVICE_UNAVAILABLE: 16,
+  });
+  assert.deepEqual(writeDisposition.reserved, [[5, 15]]);
 
   assert.deepEqual(
     Object.fromEntries(Object.entries(envelope.fields).map(([name, field]) => [name, field.id])),

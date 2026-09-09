@@ -40,9 +40,9 @@ message DataPosture {
   string storage_encryption = 3;
   bool production_data_allowed = 4;
   string product_network = 5;
-  string object_format = 6; // empty in the synthetic posture
-  string admission_receipt_digest = 7; // empty in the synthetic posture
-  repeated string admission_platforms = 8; // empty in the synthetic posture
+  string object_format = 6; // empty only in the legacy plaintext synthetic posture
+  string admission_receipt_digest = 7; // empty in both non-admitted postures
+  repeated string admission_platforms = 8; // empty in both non-admitted postures
   bytes canonical_json = 9; // exact compact posture object bytes
   reserved 10 to 15;
 }
@@ -61,6 +61,7 @@ enum WriteDisposition {
   WRITE_DISPOSITION_DENIED_UNKNOWN_CAPABILITY = 3;
   WRITE_DISPOSITION_DENIED_CLIENT_TOO_OLD = 4;
   reserved 5 to 15;
+  WRITE_DISPOSITION_DENIED_SERVICE_UNAVAILABLE = 16;
 }
 
 message ServerHandshake {

@@ -30,6 +30,52 @@ pub const LOCAL_CORE_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion { major
 /// Minimum client accepted by the Phase 1 daemon contract.
 pub const MINIMUM_CLIENT_VERSION: ProtocolVersion = LOCAL_CORE_PROTOCOL_VERSION;
 
+/// Opt-in understanding of the unavailable encrypted-synthetic posture contract.
+/// This token grants no command and is not an operational domain-read capability.
+pub const ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY: &str = "academic.encrypted-synthetic-posture.v1";
+
+pub(crate) const ENCRYPTED_SYNTHETIC_UNAVAILABLE: &str = "ENCRYPTED_SYNTHETIC_SERVICE_UNAVAILABLE";
+
+/// A validated wire combination, including the legacy admitted vault spelling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TransportIdentity {
+    LegacySynthetic,
+    LegacyAdmitted,
+    EncryptedSyntheticScaffold,
+}
+
+impl TransportIdentity {
+    fn from_posture(posture: &Posture) -> Self {
+        if posture.is_encrypted_synthetic() {
+            Self::EncryptedSyntheticScaffold
+        } else if posture.production_data_allowed() {
+            Self::LegacyAdmitted
+        } else {
+            Self::LegacySynthetic
+        }
+    }
+
+    pub(crate) fn storage_schema(self) -> StorageSchemaVersion {
+        let (number, version) = match self {
+            Self::LegacySynthetic => (1, "1.0.0"),
+            Self::LegacyAdmitted | Self::EncryptedSyntheticScaffold => (2, "2.0.0"),
+        };
+        StorageSchemaVersion {
+            number,
+            semantic_version: version.to_owned(),
+        }
+    }
+
+    pub(crate) const fn vault_format(self) -> &'static str {
+        match self {
+            // Compatibility only: this is the historical admitted wire contract,
+            // not evidence that an admitted daemon owns an encrypted vault.
+            Self::LegacySynthetic | Self::LegacyAdmitted => "PLAINTEXT_SYNTHETIC_V1",
+            Self::EncryptedSyntheticScaffold => "AEAD_CHUNKED_V2",
+        }
+    }
+}
+
 /// Exact capability names reserved for the synthetic-only local core.
 pub const PHASE1_CAPABILITY_IDS: &[&str] = &[
     "learning-platform.local.diagnostics.v1",
@@ -61,7 +107,7 @@ pub struct ServerHandshakeConfig {
     pub projections: Vec<generated::ProjectionState>,
     /// Current profile lock state.
     pub lock_state: ProfileLockState,
-    /// Receipt-derived posture selected before the listener accepts clients.
+    /// Closed posture description; it does not establish service readiness.
     pub posture: Posture,
 }
 
@@ -77,11 +123,22 @@ impl Default for ServerHandshakeConfig {
 }
 
 impl ServerHandshakeConfig {
-    /// Replaces the synthetic default with an already verified posture.
+    /// Replaces the configured posture description without establishing service readiness.
     #[must_use]
     pub fn with_posture(mut self, posture: Posture) -> Self {
         self.posture = posture;
         self
+    }
+
+    /// Pure identity-negotiation scaffold with no unlocked service or commands.
+    /// No profile is opened and no listener may be created from this description.
+    #[must_use]
+    pub fn encrypted_synthetic_scaffold() -> Self {
+        Self {
+            posture: Posture::encrypted_synthetic(),
+            lock_state: ProfileLockState::Locked,
+            ..Self::default()
+        }
     }
 }
 
@@ -93,6 +150,7 @@ fn is_known_capability(capability: &str) -> bool {
     contains_capability(PHASE1_CAPABILITY_IDS, capability)
         || crate::details::DETAILS_CAPABILITIES.contains(&capability)
         || capability == crate::domain_details::CAPABILITY
+        || capability == ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY
 }
 
 fn proto_version(version: ProtocolVersion) -> generated::ProtocolVersion {
@@ -167,14 +225,10 @@ pub(crate) fn validate_client_handshake(
     protocol_version_from_proto(client.protocol_version.as_ref(), "client.protocol_version")
 }
 
-/// The storage schema a handshake announces under one posture.
+/// Legacy schema selection retained for callers of the original two-posture API.
 ///
-/// Both sides of the wire read this one function: `negotiate_handshake`
-/// announces what it returns and `validate_server_handshake` expects what it
-/// returns. `P2-K6` made the emitter announce schema 2 under the admitted
-/// posture and left the client validator accepting only schema 1, so this
-/// repository's own client refused this repository's own admitted daemon. One
-/// function is what stops the next change from splitting them again.
+/// The encrypted-synthetic combination cannot be selected with this boolean.
+/// Current negotiation and validation use an explicit three-way identity instead.
 #[must_use]
 pub fn storage_schema_for(production_data_allowed: bool) -> StorageSchemaVersion {
     if production_data_allowed {
@@ -190,7 +244,7 @@ pub fn storage_schema_for(production_data_allowed: bool) -> StorageSchemaVersion
     }
 }
 
-fn policy_message(posture: &Posture) -> DataPosture {
+pub(crate) fn policy_message(posture: &Posture) -> DataPosture {
     DataPosture {
         data_policy: posture.data_policy().to_owned(),
         storage_mode: posture.storage_mode().to_owned(),
@@ -221,6 +275,11 @@ pub fn negotiate_handshake(
             field: "server.daemon_build",
             reason: "must be nonempty and bounded",
         });
+    }
+
+    let identity = TransportIdentity::from_posture(&config.posture);
+    if identity == TransportIdentity::EncryptedSyntheticScaffold {
+        return negotiate_encrypted_scaffold(client, client_version, config);
     }
 
     let requested = client
@@ -279,9 +338,9 @@ pub fn negotiate_handshake(
         protocol_version: Some(proto_version(LOCAL_CORE_PROTOCOL_VERSION)),
         minimum_client_version: Some(proto_version(MINIMUM_CLIENT_VERSION)),
         daemon_build: config.daemon_build.clone(),
-        storage_schema: Some(storage_schema_for(config.posture.production_data_allowed())),
-        vault_read_formats: vec!["PLAINTEXT_SYNTHETIC_V1".to_owned()],
-        vault_write_format: "PLAINTEXT_SYNTHETIC_V1".to_owned(),
+        storage_schema: Some(identity.storage_schema()),
+        vault_read_formats: vec![identity.vault_format().to_owned()],
+        vault_write_format: identity.vault_format().to_owned(),
         projections: config.projections.clone(),
         lock_state: config.lock_state as i32,
         policy: Some(policy_message(&config.posture)),
@@ -289,6 +348,58 @@ pub fn negotiate_handshake(
         negotiated_protocol_version,
         write_disposition: write_disposition as i32,
         write_denial_reason: write_denial_reason.to_owned(),
+    })
+}
+
+fn negotiate_encrypted_scaffold(
+    client: &ClientHandshake,
+    version: ProtocolVersion,
+    config: &ServerHandshakeConfig,
+) -> Result<ServerHandshake, RpcError> {
+    if config.lock_state != ProfileLockState::Locked || !config.projections.is_empty() {
+        return Err(RpcError::InvalidFieldValue {
+            field: "server.encrypted_synthetic_scaffold",
+            reason: "requires locked state and no projections",
+        });
+    }
+    if version.major != LOCAL_CORE_PROTOCOL_VERSION.major
+        || client_is_below_minimum(version, MINIMUM_CLIENT_VERSION)
+        || !client
+            .capability_ids
+            .iter()
+            .any(|id| id == ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY)
+    {
+        return Err(RpcError::InvalidFieldValue {
+            field: "client.encrypted_synthetic_support",
+            reason: "requires a compatible client with explicit posture support",
+        });
+    }
+    for capability in &client.capability_ids {
+        if !is_known_capability(capability) {
+            return Err(RpcError::InvalidCapabilityId {
+                capability: capability.clone(),
+            });
+        }
+    }
+    let identity = TransportIdentity::EncryptedSyntheticScaffold;
+    Ok(ServerHandshake {
+        protocol_name: LOCAL_CORE_PROTOCOL_NAME.to_owned(),
+        protocol_version: Some(proto_version(LOCAL_CORE_PROTOCOL_VERSION)),
+        minimum_client_version: Some(proto_version(MINIMUM_CLIENT_VERSION)),
+        daemon_build: config.daemon_build.clone(),
+        storage_schema: Some(identity.storage_schema()),
+        vault_read_formats: vec![identity.vault_format().to_owned()],
+        vault_write_format: identity.vault_format().to_owned(),
+        projections: Vec::new(),
+        lock_state: ProfileLockState::Locked as i32,
+        policy: Some(policy_message(&config.posture)),
+        capability_ids: vec![ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY.to_owned()],
+        negotiated_protocol_version: Some(proto_version(negotiate_same_major_minor(
+            version,
+            LOCAL_CORE_PROTOCOL_VERSION,
+        ))),
+        write_disposition: WriteDisposition::DeniedServiceUnavailable as i32,
+        write_denial_reason: ENCRYPTED_SYNTHETIC_UNAVAILABLE.to_owned(),
     })
 }
 

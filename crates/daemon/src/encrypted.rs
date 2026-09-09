@@ -1,8 +1,9 @@
-//! D1 refuses encrypted transport startup before any service side effect.
+//! Encrypted transport startup remains unavailable before any service side effect.
 //!
-//! D3 must supply the truthful non-admitted encrypted posture, reconcile the
-//! selected service, and acquire the existing process singleton. D2/D4 must
-//! supply complete recognized source closure. A profile marker is not readiness.
+//! D3 supplies an opt-in RPC identity description, not an operational service.
+//! D2/D4 must supply complete recognized source closure before selected-service
+//! admission can be composed with the existing path and process-singleton rules.
+//! Neither a keyed D1 session, a scope-only read, nor a profile marker is readiness.
 
 use std::{convert::Infallible, path::Path};
 
@@ -12,7 +13,8 @@ use std::{convert::Infallible, path::Path};
 pub struct EncryptedSyntheticStartupUnavailable;
 
 /// Refuses before opening a profile, creating runtime files, binding a listener,
-/// or publishing a nonce/capability/posture. There is no success value in D1.
+/// or publishing a nonce/capability/posture. D4 is absent, so there is no success
+/// value and the negotiated RPC scaffold cannot authorize this function to start.
 pub fn start(
     _profile_root: &Path,
     _runtime_root: &Path,

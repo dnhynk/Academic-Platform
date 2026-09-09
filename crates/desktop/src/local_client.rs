@@ -249,11 +249,22 @@ impl LocalClient {
         academic_rpc::domain_details::wire::DetailFrameReply,
         Box<dyn std::error::Error + Send + Sync>,
     > {
-        use academic_rpc::details as dto;
         request.validate()?;
         let contents = self.session()?;
         let (endpoint, nonce) = parse_session(&contents)?;
-        let mut stream = connect(endpoint).await?;
+        let stream = connect(endpoint).await?;
+        Self::detail_protocol(stream, nonce, request).await
+    }
+
+    async fn detail_protocol(
+        mut stream: Box<dyn ClientStream>,
+        nonce: &str,
+        request: &academic_rpc::domain_details::wire::DetailFrameRequest,
+    ) -> Result<
+        academic_rpc::domain_details::wire::DetailFrameReply,
+        Box<dyn std::error::Error + Send + Sync>,
+    > {
+        use academic_rpc::details as dto;
         write_envelope(
             &mut stream,
             &LocalCoreEnvelope {
@@ -499,6 +510,82 @@ mod tests {
         generated::{ImmutableReceipt, MutableResponse},
         negotiate_handshake,
     };
+
+    #[tokio::test]
+    async fn unsolicited_encrypted_scaffold_closes_before_domain_command()
+    -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        use academic_rpc::{
+            domain_details::wire::DetailFrameRequest,
+            handshake::ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY,
+        };
+        use tokio::io::AsyncReadExt;
+        let request = DetailFrameRequest::Domain(serde_json::from_value(serde_json::json!({
+            "command":"details_domain_read_v3",
+            "context":{"domain_id":"01900000-0000-7000-8000-000000000001","scope_id":"01900000-0000-7000-8000-000000000002"},
+            "selector":{"view":"domain_detail_v3","known_at_accept_seq":7,"valid_at_ms":50},
+            "query":{"kind":"index","surface":"concept"}
+        }))?);
+        request.validate()?;
+        let (client, mut peer) = tokio::io::duplex(65536);
+        let nonce = "a".repeat(64);
+        let peer_task = async {
+            let Some(Payload::ClientHandshake(hello)) =
+                read_envelope(&mut peer, FrameClass::Handshake)
+                    .await?
+                    .payload
+            else {
+                return Err("missing hello".into());
+            };
+            // Ordinary v3 hello bytes stay legacy-compatible: no posture opt-in.
+            let expected = ClientHandshake {
+                protocol_name: LOCAL_CORE_PROTOCOL_NAME.to_owned(),
+                protocol_version: Some(ProtocolVersion { major: 1, minor: 0 }),
+                capability_ids: vec![
+                    academic_rpc::domain_details::CAPABILITY.to_owned(),
+                    format!("learning-platform.local.session-nonce.{nonce}"),
+                ],
+            };
+            assert_eq!(hello, expected);
+            // This test peer sends an unsolicited, exact scaffold. It does not
+            // represent successful negotiation or an operational encrypted daemon.
+            let supported = ClientHandshake {
+                capability_ids: vec![ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY.to_owned()],
+                ..hello
+            };
+            let scaffold = negotiate_handshake(
+                &supported,
+                &ServerHandshakeConfig::encrypted_synthetic_scaffold(),
+            )?;
+            write_envelope(
+                &mut peer,
+                &LocalCoreEnvelope {
+                    payload: Some(Payload::ServerHandshake(scaffold)),
+                },
+                FrameClass::Handshake,
+            )
+            .await?;
+            let mut next = [0_u8; 1];
+            assert_eq!(
+                peer.read(&mut next).await?,
+                0,
+                "client emitted command bytes"
+            );
+            Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
+        };
+        let (reply, served) = tokio::time::timeout(Duration::from_secs(2), async {
+            tokio::join!(
+                LocalClient::detail_protocol(Box::new(client), &nonce, &request),
+                peer_task
+            )
+        })
+        .await?;
+        served?;
+        assert_eq!(
+            reply.err().ok_or("scaffold became readable")?.to_string(),
+            "Detail capability unavailable"
+        );
+        Ok(())
+    }
 
     #[test]
     fn original_receipt_can_be_confirmed_after_visible_source_removal()

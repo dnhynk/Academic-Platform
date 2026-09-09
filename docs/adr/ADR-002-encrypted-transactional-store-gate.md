@@ -32,3 +32,14 @@ Until acceptance, the repository permits only in-memory or disposable plaintext 
 ## Consequences
 
 Phase 1 may test schema/query semantics in a throwaway plaintext database, but no actual personal data may enter it. If SQLCipher fails the gate, a replacement must preserve ADR-003 semantics and ADR-012 export/restore independence.
+
+### Bounded encrypted synthetic amendment (D3)
+
+The [D3 contract](../contracts/encrypted-synthetic-domain-v1.md) permits an
+explicit non-admitted encrypted description alongside the two byte-preserved
+legacy postures. It names the existing SQLCipher schema 2 and AEAD format while
+retaining synthetic-only policy, production permission false and network `NONE`.
+This amends the old representation, not this real-data acceptance gate. The
+opt-in RPC scaffold is locked and unavailable; absent D4 material means startup
+still refuses before I/O even for an open keyed D1 session. Encryption alone
+does not authenticate recognized synthetic sources or complete X4/H1.

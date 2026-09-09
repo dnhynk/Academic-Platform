@@ -2,7 +2,9 @@
 //!
 //! The product verifier has one acceptance-key source: [`ACCEPTANCE_PUBLIC_KEY`].
 //! It is currently typed as unprovisioned, so every product verification is
-//! denied and every surface emits the synthetic posture. Test receipts use a
+//! denied. The default surface posture stays plaintext synthetic; the explicit
+//! encrypted-synthetic description grants neither admission nor service readiness.
+//! Test receipts use a
 //! separate verifier compiled only under `cfg(test)`; no key parameter or
 //! setter is present in the product API.
 
@@ -101,6 +103,7 @@ pub struct Posture {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum PostureKind {
     Synthetic,
+    EncryptedSynthetic,
     Admitted {
         receipt_digest: String,
         platforms: Vec<String>,
@@ -114,6 +117,21 @@ impl Posture {
         Self {
             kind: PostureKind::Synthetic,
         }
+    }
+
+    /// Describes the non-admitted schema-2/AEAD synthetic storage combination.
+    /// This value proves no profile identity, recognized corpus or ready service.
+    #[must_use]
+    pub const fn encrypted_synthetic() -> Self {
+        Self {
+            kind: PostureKind::EncryptedSynthetic,
+        }
+    }
+
+    /// Whether this is the explicit non-admitted encrypted description.
+    #[must_use]
+    pub const fn is_encrypted_synthetic(&self) -> bool {
+        matches!(self.kind, PostureKind::EncryptedSynthetic)
     }
 
     /// Returns the admitted posture bound to one verified receipt.
@@ -131,7 +149,7 @@ impl Posture {
     #[must_use]
     pub const fn data_policy(&self) -> &'static str {
         match self.kind {
-            PostureKind::Synthetic => SYNTHETIC_DATA_POLICY,
+            PostureKind::Synthetic | PostureKind::EncryptedSynthetic => SYNTHETIC_DATA_POLICY,
             PostureKind::Admitted { .. } => ADMITTED_DATA_POLICY,
         }
     }
@@ -141,7 +159,7 @@ impl Posture {
     pub const fn storage_mode(&self) -> &'static str {
         match self.kind {
             PostureKind::Synthetic => SYNTHETIC_STORAGE_MODE,
-            PostureKind::Admitted { .. } => ADMITTED_STORAGE_MODE,
+            PostureKind::EncryptedSynthetic | PostureKind::Admitted { .. } => ADMITTED_STORAGE_MODE,
         }
     }
 
@@ -150,16 +168,20 @@ impl Posture {
     pub const fn storage_encryption(&self) -> &'static str {
         match self.kind {
             PostureKind::Synthetic => SYNTHETIC_STORAGE_ENCRYPTION,
-            PostureKind::Admitted { .. } => ADMITTED_STORAGE_ENCRYPTION,
+            PostureKind::EncryptedSynthetic | PostureKind::Admitted { .. } => {
+                ADMITTED_STORAGE_ENCRYPTION
+            }
         }
     }
 
-    /// Optional object format, present only after admission.
+    /// Object format for an encrypted description, independently of admission.
     #[must_use]
     pub const fn object_format(&self) -> Option<&'static str> {
         match self.kind {
             PostureKind::Synthetic => None,
-            PostureKind::Admitted { .. } => Some(ADMITTED_OBJECT_FORMAT),
+            PostureKind::EncryptedSynthetic | PostureKind::Admitted { .. } => {
+                Some(ADMITTED_OBJECT_FORMAT)
+            }
         }
     }
 
@@ -173,7 +195,7 @@ impl Posture {
     #[must_use]
     pub const fn product_network(&self) -> &'static str {
         match self.kind {
-            PostureKind::Synthetic => SYNTHETIC_PRODUCT_NETWORK,
+            PostureKind::Synthetic | PostureKind::EncryptedSynthetic => SYNTHETIC_PRODUCT_NETWORK,
             PostureKind::Admitted { .. } => ADMITTED_PRODUCT_NETWORK,
         }
     }
@@ -182,7 +204,7 @@ impl Posture {
     #[must_use]
     pub fn admission_receipt_digest(&self) -> Option<&str> {
         match &self.kind {
-            PostureKind::Synthetic => None,
+            PostureKind::Synthetic | PostureKind::EncryptedSynthetic => None,
             PostureKind::Admitted { receipt_digest, .. } => Some(receipt_digest),
         }
     }
@@ -191,7 +213,7 @@ impl Posture {
     #[must_use]
     pub fn admission_platforms(&self) -> &[String] {
         match &self.kind {
-            PostureKind::Synthetic => &[],
+            PostureKind::Synthetic | PostureKind::EncryptedSynthetic => &[],
             PostureKind::Admitted { platforms, .. } => platforms,
         }
     }
@@ -202,6 +224,9 @@ impl Posture {
         match self.kind {
             PostureKind::Synthetic => {
                 "PLAINTEXT SYNTHETIC-ONLY PROFILE — REAL OR PRODUCTION DATA IS FORBIDDEN"
+            }
+            PostureKind::EncryptedSynthetic => {
+                "ENCRYPTED SYNTHETIC-ONLY PROFILE — REAL OR PRODUCTION DATA IS FORBIDDEN"
             }
             PostureKind::Admitted { .. } => {
                 "ENCRYPTED ADMITTED PROFILE — REAL PERSONAL DATA IS PERMITTED"
@@ -217,6 +242,17 @@ impl Posture {
                 "{\"data_policy\":\"SYNTHETIC_FIXTURES_ONLY_UNTIL_ADR_002_ACCEPTED\",",
                 "\"storage_mode\":\"PLAINTEXT_TEMPORARY_SQLITE\",",
                 "\"storage_encryption\":\"NONE\",",
+                "\"production_data_allowed\":false,",
+                "\"product_network\":\"NONE\"}"
+            )
+            .as_bytes()
+            .to_vec(),
+            PostureKind::EncryptedSynthetic => concat!(
+                "{\"data_policy\":\"SYNTHETIC_FIXTURES_ONLY_UNTIL_ADR_002_ACCEPTED\",",
+                "\"storage_mode\":\"SQLCIPHER_ENCRYPTED_PROFILE_V2\",",
+                "\"storage_encryption\":",
+                "\"SQLCIPHER_4_AES_256_CBC_HMAC_SHA512_PBKDF2_256000\",",
+                "\"object_format\":\"AEAD_CHUNKED_V2\",",
                 "\"production_data_allowed\":false,",
                 "\"product_network\":\"NONE\"}"
             )
@@ -263,6 +299,17 @@ impl Serialize for Posture {
                 state.serialize_field("data_policy", self.data_policy())?;
                 state.serialize_field("storage_mode", self.storage_mode())?;
                 state.serialize_field("storage_encryption", self.storage_encryption())?;
+                state
+                    .serialize_field("production_data_allowed", &self.production_data_allowed())?;
+                state.serialize_field("product_network", self.product_network())?;
+                state.end()
+            }
+            PostureKind::EncryptedSynthetic => {
+                let mut state = serializer.serialize_struct("Posture", 6)?;
+                state.serialize_field("data_policy", self.data_policy())?;
+                state.serialize_field("storage_mode", self.storage_mode())?;
+                state.serialize_field("storage_encryption", self.storage_encryption())?;
+                state.serialize_field("object_format", &ADMITTED_OBJECT_FORMAT)?;
                 state
                     .serialize_field("production_data_allowed", &self.production_data_allowed())?;
                 state.serialize_field("product_network", self.product_network())?;
@@ -1116,6 +1163,26 @@ mod tests {
             serde_json::to_vec(&posture)?
         );
         assert!(!posture.production_data_allowed());
+        Ok(())
+    }
+
+    #[test]
+    fn encrypted_synthetic_description_has_no_admission_authority() -> Result<(), Box<dyn Error>> {
+        let posture = Posture::encrypted_synthetic();
+        let expected = br#"{"data_policy":"SYNTHETIC_FIXTURES_ONLY_UNTIL_ADR_002_ACCEPTED","storage_mode":"SQLCIPHER_ENCRYPTED_PROFILE_V2","storage_encryption":"SQLCIPHER_4_AES_256_CBC_HMAC_SHA512_PBKDF2_256000","object_format":"AEAD_CHUNKED_V2","production_data_allowed":false,"product_network":"NONE"}"#;
+        assert_eq!(posture.canonical_json_bytes(), expected);
+        assert_eq!(serde_json::to_vec(&posture)?, expected);
+        assert!(posture.is_encrypted_synthetic());
+        assert!(!posture.production_data_allowed());
+        assert!(posture.admission_receipt_digest().is_none());
+        assert!(posture.admission_platforms().is_empty());
+        assert_eq!(posture.product_network(), "NONE");
+        assert!(!Posture::default().is_encrypted_synthetic());
+        let absent = tempfile::tempdir()?;
+        assert_eq!(
+            AdmissionVerifier::posture(absent.path()),
+            Posture::synthetic()
+        );
         Ok(())
     }
 

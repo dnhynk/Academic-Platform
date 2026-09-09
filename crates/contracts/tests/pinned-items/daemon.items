@@ -36,7 +36,11 @@ crates/daemon/src/readers.rs [priv] use academic_store::{connection::ReaderConne
 crates/daemon/src/readers.rs [pub(crate)] impl ReaderFactory :: const fn new(profile: SyntheticProfile) -> Self |4e9647dcf3c153e7
 crates/daemon/src/readers.rs [pub] #[derive(Debug, Clone)] struct ReaderFactory |a6490dc9f0a09f02
 crates/daemon/src/readers.rs [pub] impl ReaderFactory :: fn open(&self) -> Result<ReaderConnection, StoreError> |a8f24a530d31be8f
+crates/daemon/src/runtime_meta.rs [priv] #[cfg(test)] mod tests
 crates/daemon/src/runtime_meta.rs [priv] impl SessionNonce
+crates/daemon/src/runtime_meta.rs [priv] mod tests :: #[test] fn actual_nonce_authentication_preserves_legacy_and_opt_in_negotiation() -> Result<(), Box<dyn std::error::Error>> |7a2f53b7b5f11666
+crates/daemon/src/runtime_meta.rs [priv] mod tests :: use academic_rpc::{ ServerHandshakeConfig, generated::WriteDisposition, handshake::ENCRYPTED_SYNTHETIC_POSTURE_CAPABILITY, negotiate_handshake, } |d8ed3c1d248b8cbe
+crates/daemon/src/runtime_meta.rs [priv] mod tests :: use super::* |19dbf88307d136ac
 crates/daemon/src/runtime_meta.rs [priv] use academic_rpc::generated::ClientHandshake |56753ab48e052e4d
 crates/daemon/src/runtime_meta.rs [priv] use crate::{ DaemonError, SESSION_NONCE_CAPABILITY_PREFIX, daemon_io, transport::{self, RuntimePaths}, } |c8953586e3bee036
 crates/daemon/src/runtime_meta.rs [priv] use std::{ fs::{self, OpenOptions}, io::{self, Write}, path::Path, } |aa06a03181e4bb0e

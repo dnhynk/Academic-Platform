@@ -40,6 +40,10 @@ All four committed signed fixtures are synthetic and declare `network_egress: NO
 
 ## Bootstrap
 
+The [D3 encrypted synthetic posture scaffold](docs/contracts/encrypted-synthetic-domain-v1.md)
+adds opt-in identity negotiation only; encrypted service startup and domain reads
+remain unavailable pending recognized material. Legacy encodings are preserved.
+
 Prerequisites are pinned to Rust 1.98.0, Node 24.19.0, and pnpm 11.22.0. See [the full bootstrap guide](docs/development/bootstrap.md).
 
 ```powershell

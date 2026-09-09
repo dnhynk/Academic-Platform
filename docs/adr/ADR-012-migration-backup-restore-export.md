@@ -176,3 +176,10 @@ and factory-refusal tests recheck the backup's complete inventory and digests;
 refusal leaves an incomplete staging tree and no published destination.
 
 Fixture for each supported schema version; interrupted large migration resume; restore only to empty destination; object/ledger/key closure; independent fresh-profile restore; and vendor-neutral export/import round trip.
+
+The [D3 encrypted synthetic scaffold](../contracts/encrypted-synthetic-domain-v1.md)
+adds no migration, export, backup, restore or import command. Its unavailable
+handshake advertises none of those capabilities. Existing imported encodings,
+original receipt/actor bytes and plaintext portability behavior are preserved;
+D5 encrypted portability and new-root/incarnation semantics remain unimplemented
+by this scaffold and cannot inherit acceptance from D1 library reopen tests.

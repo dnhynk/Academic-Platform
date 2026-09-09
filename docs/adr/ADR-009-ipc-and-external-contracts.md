@@ -123,3 +123,15 @@ binary-reference permissions, dependency admission and historical goldens do
 not change.
 
 Kotlin and Swift golden decoding; general Protobuf unknown-field preservation rules; N-1 client compatibility; length-prefixed IPC framing; decompression/size/depth limits; malformed and fuzz corpus; and generated bindings for all payload types. Signed deterministic-CBOR authenticated-field discard is already fail-closed. Phase 0 executes Rust actor/relation wire round trips plus declarative schema drift checks.
+
+### D3 identity-only negotiation amendment
+
+The [encrypted synthetic contract](../contracts/encrypted-synthetic-domain-v1.md)
+adds an opt-in third posture and unavailable disposition 16 without changing
+protocol 1.0, existing field tags, old enumerants or reserved values 5 through 15.
+The new reply is locked, projection-empty and grants only understanding of the
+posture contract. Legacy synthetic/admitted canonical and wire encodings remain
+exact, including the admitted branch's old plaintext vault spelling. Ordinary
+desktop hellos remain unchanged; an unsolicited scaffold is refused before a
+domain request is sent. No positive encrypted-service or N-1 generated-client
+acceptance is claimed.
