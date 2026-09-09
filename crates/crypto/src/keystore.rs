@@ -48,6 +48,16 @@ pub trait DeviceKeystore {
     /// Stable spelling of the broker, recorded in the recipient parameters.
     fn provider(&self) -> &str;
 
+    /// Whether recipient creation requires durable staging before native seal.
+    ///
+    /// Existing implementations retain their historical one-step behavior.
+    /// Add-only persistent brokers must opt in and implement the separate
+    /// `RecoverableDeviceKeystore` seam; the one-step recipient helper then
+    /// refuses before generating or storing any key.
+    fn requires_publication_journal(&self) -> bool {
+        false
+    }
+
     /// Asks the broker to hold `secret`, returning the blob to persist.
     fn seal(&self, label: &str, secret: &[u8]) -> Result<Vec<u8>, KeystoreFailure>;
 
@@ -55,12 +65,41 @@ pub trait DeviceKeystore {
     fn open(&self, label: &str, blob: &[u8]) -> Result<Zeroizing<Vec<u8>>, KeystoreFailure>;
 }
 
+/// A fresh exact seal identity that can be consumed only once.
+///
+/// Implementations must not create persistent state while preparing it, clone
+/// the token, or reconstruct it from old blobs. The identity must bind the
+/// requested provider and label, and remain usable for exact open/purge after
+/// either a successful or an ambiguous failed seal attempt.
+pub trait PreparedDeviceSeal {
+    /// The blob to persist in the incomplete recipient before calling seal.
+    fn blob(&self) -> &[u8];
+
+    /// Attempts add once, without replacing any existing item.
+    fn seal(self, secret: &[u8]) -> Result<(), KeystoreFailure>;
+}
+
+/// Optional extension for brokers with exact, add-only persistent identities.
+pub trait RecoverableDeviceKeystore: DeviceKeystore {
+    /// One fresh identity; persisted blobs cannot be converted back into it.
+    type PreparedSeal: PreparedDeviceSeal;
+
+    /// Prepares identity only, with no persistent side effect.
+    fn prepare_seal(&self, label: &str) -> Result<Self::PreparedSeal, KeystoreFailure>;
+
+    /// Purges only the exact generation identified by this label and blob.
+    ///
+    /// False means no matching generation remains. Failure is not absence;
+    /// callers must retain the incomplete record and retry exact cleanup.
+    fn purge_incomplete(&self, label: &str, blob: &[u8]) -> Result<bool, KeystoreFailure>;
+}
+
 #[cfg(feature = "os-keystore")]
 mod platform {
     use academic_keystore_platform as native;
     use zeroize::Zeroizing;
 
-    use super::{DeviceKeystore, KeystoreFailure};
+    use super::{DeviceKeystore, KeystoreFailure, PreparedDeviceSeal, RecoverableDeviceKeystore};
 
     /// The reviewed native broker for this target.
     #[derive(Debug, Clone, Copy, Default)]
@@ -103,6 +142,13 @@ mod platform {
             native::PROVIDER.as_str()
         }
 
+        fn requires_publication_journal(&self) -> bool {
+            matches!(
+                native::PROVIDER,
+                native::KeystoreProvider::MacosKeychainDataProtectionV1
+            )
+        }
+
         fn seal(&self, label: &str, secret: &[u8]) -> Result<Vec<u8>, KeystoreFailure> {
             native::seal(&label_of(label)?, secret).map_err(|error| translate(&error))
         }
@@ -114,10 +160,38 @@ mod platform {
         }
     }
 
+    /// Redacted, single-use wrapper around the native prepared identity.
+    #[derive(Debug)]
+    pub struct PlatformPreparedSeal(native::PreparedSeal);
+
+    impl PreparedDeviceSeal for PlatformPreparedSeal {
+        fn blob(&self) -> &[u8] {
+            self.0.blob()
+        }
+
+        fn seal(self, secret: &[u8]) -> Result<(), KeystoreFailure> {
+            self.0.seal(secret).map_err(|error| translate(&error))
+        }
+    }
+
+    impl RecoverableDeviceKeystore for PlatformKeystore {
+        type PreparedSeal = PlatformPreparedSeal;
+
+        fn prepare_seal(&self, label: &str) -> Result<Self::PreparedSeal, KeystoreFailure> {
+            native::prepare_seal(&label_of(label)?)
+                .map(PlatformPreparedSeal)
+                .map_err(|error| translate(&error))
+        }
+
+        fn purge_incomplete(&self, label: &str, blob: &[u8]) -> Result<bool, KeystoreFailure> {
+            purge(label, blob)
+        }
+    }
+
     /// Removes the stored key for `label`, when the broker stores one.
     ///
-    /// Exposed for tests and for `P2-K5`'s revocation work; the hierarchy itself
-    /// never deletes a key.
+    /// Exposed for tests, explicit incomplete-publication cleanup and `P2-K5`'s
+    /// revocation work. No automatic or label-only deletion is performed.
     pub fn purge(label: &str, blob: &[u8]) -> Result<bool, KeystoreFailure> {
         let outcome = native::purge(&label_of(label)?, blob).map_err(|error| translate(&error))?;
         Ok(matches!(outcome, native::PurgeOutcome::Removed))
@@ -125,4 +199,4 @@ mod platform {
 }
 
 #[cfg(feature = "os-keystore")]
-pub use platform::{PlatformKeystore, purge};
+pub use platform::{PlatformKeystore, PlatformPreparedSeal, purge};

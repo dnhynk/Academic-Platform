@@ -10,10 +10,13 @@
 
 #![cfg(feature = "os-keystore")]
 
+use std::io::Write as _;
+
 use academic_crypto::{
     DeviceKeystore as _, IDENTIFIER_BYTES, KeystoreFailure, PlatformKeystore, ProfileId,
-    RecipientParameters, RecipientRecord, UnlockError, VaultMasterKey, create_device_recipient,
-    purge_device_key, unlock_with_device,
+    PublicationJournalFailure, RecipientParameters, RecipientRecord, UnlockError, VaultMasterKey,
+    create_device_recipient, create_recoverable_device_recipient, purge_device_key,
+    unlock_with_device,
 };
 
 const PROFILE: ProfileId = ProfileId::from_bytes([0x71; IDENTIFIER_BYTES]);
@@ -33,6 +36,18 @@ fn cleanup(label: &str, record: &RecipientRecord) {
     let _ = purge_device_key(label, record.keystore_blob());
 }
 
+/// Attempt exact task-item cleanup on assertion unwinding as well as success.
+struct NativeCleanup<'a> {
+    label: &'a str,
+    record: &'a RecipientRecord,
+}
+
+impl Drop for NativeCleanup<'_> {
+    fn drop(&mut self) {
+        cleanup(self.label, self.record);
+    }
+}
+
 /// Exercises the full device-recipient path against the real host broker:
 /// seal, reopen, reject a foreign label, reject a corrupted blob, and hold the
 /// broker to its own revocation contract.
@@ -48,9 +63,55 @@ fn native_roundtrip(prefix: &str, purge_removes: bool) {
         unreachable!("randomness must be available");
     };
 
-    let record = match create_device_recipient(&key, PROFILE, RECIPIENT, &label, &keystore) {
+    let created = if keystore.requires_publication_journal() {
+        // The positive macOS harness keeps the incomplete record even on a
+        // seal error or assertion unwind. A TempDir drop must not remove the
+        // only exact cleanup identity. The owning test lane retains this
+        // journal for reconciliation; this is not a native crash proof.
+        let directory = match tempfile::Builder::new()
+            .prefix("macos-recipient-publication-")
+            .tempdir()
+        {
+            Ok(directory) => directory.keep(),
+            Err(_) => unreachable!("the task journal directory must be available"),
+        };
+        create_recoverable_device_recipient(&key, PROFILE, RECIPIENT, &label, &keystore, |record| {
+            let bytes = record
+                .to_canonical_cbor()
+                .map_err(|_| PublicationJournalFailure)?;
+            let mut journal = std::fs::OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .open(directory.join("incomplete.cbor"))
+                .map_err(|_| PublicationJournalFailure)?;
+            journal
+                .write_all(&bytes)
+                .map_err(|_| PublicationJournalFailure)?;
+            journal.sync_all().map_err(|_| PublicationJournalFailure)?;
+            // On the macOS positive lane, sync the containing directories as
+            // well as the new file before allowing the native item to exist.
+            #[cfg(target_os = "macos")]
+            {
+                std::fs::File::open(&directory)
+                    .and_then(|file| file.sync_all())
+                    .map_err(|_| PublicationJournalFailure)?;
+                let parent = directory.parent().ok_or(PublicationJournalFailure)?;
+                std::fs::File::open(parent)
+                    .and_then(|file| file.sync_all())
+                    .map_err(|_| PublicationJournalFailure)?;
+            }
+            Ok(())
+        })
+    } else {
+        create_device_recipient(&key, PROFILE, RECIPIENT, &label, &keystore)
+    };
+    let record = match created {
         Ok(record) => record,
         Err(error) => unreachable!("the host broker must seal a device key: {error}"),
+    };
+    let _cleanup = NativeCleanup {
+        label: &label,
+        record: &record,
     };
 
     // The record names the broker this build actually carries.
@@ -219,4 +280,28 @@ fn linux_secret_service_is_selected_and_fails_closed_without_a_provider() {
     let never = unique_label("never-sealed");
     let refused = keystore.open(&never, never.as_bytes());
     assert!(refused.is_err(), "an unsealed label must not open");
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_data_protection_provider_rejects_foreign_blobs_before_native_access() {
+    let keystore = PlatformKeystore::new();
+    assert_eq!(keystore.provider(), "MACOS_KEYCHAIN_DATA_PROTECTION_V1");
+    let refused = keystore.open("academic-os:test:macos:foreign", b"AKSB\x01\x01\x01\0\0\0p");
+    assert!(refused.is_err());
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+#[ignore = "requires separately reviewed provisioned identity in a disposable signed-in synthetic user context"]
+fn macos_data_protection_roundtrip_native() {
+    assert_eq!(
+        std::env::var("ACADEMIC_MACOS_KEYCHAIN_TEST_CONTEXT").as_deref(),
+        Ok("disposable-provisioned-v1")
+    );
+    assert_eq!(
+        PlatformKeystore::new().provider(),
+        "MACOS_KEYCHAIN_DATA_PROTECTION_V1"
+    );
+    native_roundtrip("macos-data-protection", true);
 }

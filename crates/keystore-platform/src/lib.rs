@@ -17,6 +17,10 @@ use zeroize::Zeroizing;
 
 #[cfg(all(target_os = "linux", feature = "secret-service"))]
 mod linux;
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(any(target_os = "macos", test))]
+mod macos_blob;
 #[cfg(windows)]
 mod windows;
 
@@ -28,6 +32,8 @@ pub enum KeystoreProvider {
     WindowsDpapiCng,
     /// Linux Secret Service (`org.freedesktop.secrets`) default collection.
     LinuxSecretService,
+    /// macOS data-protection Keychain, local generic-password items, version 1.
+    MacosKeychainDataProtectionV1,
     /// No reviewed broker exists for this target.
     Unsupported,
 }
@@ -39,6 +45,7 @@ impl KeystoreProvider {
         match self {
             Self::WindowsDpapiCng => "WINDOWS_DPAPI_CNG",
             Self::LinuxSecretService => "LINUX_SECRET_SERVICE",
+            Self::MacosKeychainDataProtectionV1 => "MACOS_KEYCHAIN_DATA_PROTECTION_V1",
             Self::Unsupported => "UNSUPPORTED",
         }
     }
@@ -47,6 +54,7 @@ impl KeystoreProvider {
         match self {
             Self::WindowsDpapiCng => 1,
             Self::LinuxSecretService => 2,
+            Self::MacosKeychainDataProtectionV1 => 3,
             Self::Unsupported => 0,
         }
     }
@@ -64,7 +72,15 @@ const fn compiled_provider() -> KeystoreProvider {
     {
         KeystoreProvider::LinuxSecretService
     }
-    #[cfg(not(any(windows, all(target_os = "linux", feature = "secret-service"))))]
+    #[cfg(target_os = "macos")]
+    {
+        KeystoreProvider::MacosKeychainDataProtectionV1
+    }
+    #[cfg(not(any(
+        windows,
+        target_os = "macos",
+        all(target_os = "linux", feature = "secret-service")
+    )))]
     {
         KeystoreProvider::Unsupported
     }
@@ -91,6 +107,8 @@ pub enum KeystoreErrorCode {
     NotFound,
     /// The broker refused this caller.
     AccessDenied,
+    /// A stored item already occupies the label; no existing key was replaced.
+    DuplicateLabel,
     /// The label is empty, over-long, or not in the accepted alphabet.
     InvalidLabel,
     /// The blob is not a well-formed sealed envelope.
@@ -142,9 +160,100 @@ impl fmt::Display for KeystoreError {
 
 impl std::error::Error for KeystoreError {}
 
+/// A fresh, single-use identity for an add-only persistent seal.
+///
+/// Preparation has no native side effect. Persist the blob and its label in an
+/// incomplete publication record before consuming this value with `seal`.
+/// There is deliberately no Clone or constructor from persisted bytes: restart
+/// may open or purge that exact identity, but must never reseal its generation.
+///
+/// ```compile_fail
+/// fn cannot_reuse(prepared: academic_keystore_platform::PreparedSeal) {
+///     let _ = prepared.seal(&[0; 32]);
+///     let _ = prepared.seal(&[1; 32]);
+/// }
+/// ```
+///
+/// ```compile_fail
+/// fn cannot_clone(prepared: academic_keystore_platform::PreparedSeal) {
+///     let _ = prepared.clone();
+/// }
+/// ```
+pub struct PreparedSeal {
+    label: KeystoreLabel,
+    blob: Vec<u8>,
+}
+
+impl fmt::Debug for PreparedSeal {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("PreparedSeal(<redacted>)")
+    }
+}
+
+impl PreparedSeal {
+    /// Borrows the exact non-secret identity to durably record before sealing.
+    #[must_use]
+    pub fn blob(&self) -> &[u8] {
+        &self.blob
+    }
+
+    /// Consumes this fresh identity in one native add attempt.
+    ///
+    /// Keep the durable identity on failure too: a failed/interrupted call is
+    /// not proof of absence. Recover with open or exact purge, never replay add.
+    pub fn seal(self, secret: &[u8]) -> Result<(), KeystoreError> {
+        const OPERATION: &str = "seal prepared device secret";
+        if secret.is_empty() || secret.len() > MAX_SECRET_BYTES {
+            return Err(KeystoreError::new(
+                KeystoreErrorCode::SecretTooLarge,
+                OPERATION,
+                None,
+            ));
+        }
+        #[cfg(target_os = "macos")]
+        {
+            let payload = decode_envelope(&self.blob, OPERATION)?;
+            macos::seal_prepared(&self.label, payload, secret, OPERATION)
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let _ = (self.label, secret);
+            Err(KeystoreError::new(
+                KeystoreErrorCode::Unsupported,
+                OPERATION,
+                None,
+            ))
+        }
+    }
+}
+
+/// Allocates an exact fresh identity without storing a key.
+///
+/// This extension is implemented only for the add-only macOS provider. Other
+/// providers retain their historical `seal` behavior and return Unsupported.
+pub fn prepare_seal(label: &KeystoreLabel) -> Result<PreparedSeal, KeystoreError> {
+    const OPERATION: &str = "prepare device secret";
+    #[cfg(target_os = "macos")]
+    {
+        Ok(PreparedSeal {
+            label: label.clone(),
+            blob: macos::prepare(label, OPERATION)?,
+        })
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = label;
+        Err(KeystoreError::new(
+            KeystoreErrorCode::Unsupported,
+            OPERATION,
+            None,
+        ))
+    }
+}
+
 /// What a purge actually did.
 ///
-/// The two brokers differ and the difference is carried in the type rather than
+/// The brokers differ and the difference is carried in the type rather than
 /// hidden: a stored-key broker removes an object, a stateless sealing broker has
 /// nothing to remove and cannot revoke an already-issued blob.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -152,7 +261,7 @@ impl std::error::Error for KeystoreError {}
 pub enum PurgeOutcome {
     /// A stored key object was removed from the operating system.
     Removed,
-    /// This provider stores nothing; the blob remains openable by its owner.
+    /// No matching item was stored. A stateless provider's blob remains openable.
     NothingStored,
 }
 
@@ -215,7 +324,12 @@ impl RecoveredSecret {
     // with no reviewed broker returns `Unsupported` from `open` and never
     // constructs a recovered secret, so the constructor is absent there rather
     // than present and unreachable.
-    #[cfg(any(windows, all(target_os = "linux", feature = "secret-service"), test))]
+    #[cfg(any(
+        windows,
+        target_os = "macos",
+        all(target_os = "linux", feature = "secret-service"),
+        test
+    ))]
     pub(crate) fn new(bytes: Vec<u8>) -> Self {
         Self(Zeroizing::new(bytes))
     }
@@ -256,12 +370,17 @@ const ENVELOPE_HEADER_LEN: usize = 10;
 /// Frames a provider payload so a foreign or corrupt blob fails before any
 /// native call, and a blob from the other platform is refused by provider tag.
 ///
-/// Both brokers frame their blob with this, so the envelope is common; only the
+/// All brokers frame their blob with this, so the envelope is common; only the
 /// payload inside it is provider-specific. Compiled only where a broker is,
 /// because a build with none seals nothing. `decode_envelope` stays
 /// unconditional: `open` and `purge` exist on every target and must still
 /// reject a blob rather than read it.
-#[cfg(any(windows, all(target_os = "linux", feature = "secret-service"), test))]
+#[cfg(any(
+    windows,
+    target_os = "macos",
+    all(target_os = "linux", feature = "secret-service"),
+    test
+))]
 fn encode_envelope(provider: KeystoreProvider, payload: &[u8]) -> Vec<u8> {
     let declared = u32::try_from(payload.len()).unwrap_or(u32::MAX);
     let mut blob = Vec::with_capacity(ENVELOPE_HEADER_LEN + payload.len());
@@ -359,7 +478,15 @@ pub fn seal(label: &KeystoreLabel, secret: &[u8]) -> Result<Vec<u8>, KeystoreErr
     {
         linux::seal(label, secret, OPERATION)
     }
-    #[cfg(not(any(windows, all(target_os = "linux", feature = "secret-service"))))]
+    #[cfg(target_os = "macos")]
+    {
+        macos::seal(label, secret, OPERATION)
+    }
+    #[cfg(not(any(
+        windows,
+        target_os = "macos",
+        all(target_os = "linux", feature = "secret-service")
+    )))]
     {
         let _ = (label, secret);
         Err(KeystoreError::new(
@@ -382,7 +509,15 @@ pub fn open(label: &KeystoreLabel, blob: &[u8]) -> Result<RecoveredSecret, Keyst
     {
         linux::open(label, payload, OPERATION)
     }
-    #[cfg(not(any(windows, all(target_os = "linux", feature = "secret-service"))))]
+    #[cfg(target_os = "macos")]
+    {
+        macos::open(label, payload, OPERATION)
+    }
+    #[cfg(not(any(
+        windows,
+        target_os = "macos",
+        all(target_os = "linux", feature = "secret-service")
+    )))]
     {
         let _ = (label, payload);
         Err(KeystoreError::new(
@@ -406,7 +541,15 @@ pub fn purge(label: &KeystoreLabel, blob: &[u8]) -> Result<PurgeOutcome, Keystor
     {
         linux::purge(label, payload, OPERATION)
     }
-    #[cfg(not(any(windows, all(target_os = "linux", feature = "secret-service"))))]
+    #[cfg(target_os = "macos")]
+    {
+        macos::purge(label, payload, OPERATION)
+    }
+    #[cfg(not(any(
+        windows,
+        target_os = "macos",
+        all(target_os = "linux", feature = "secret-service")
+    )))]
     {
         let _ = (label, payload);
         Err(KeystoreError::new(
@@ -513,5 +656,18 @@ mod tests {
         );
         assert_eq!(KeystoreProvider::WindowsDpapiCng.tag(), 1);
         assert_eq!(KeystoreProvider::LinuxSecretService.tag(), 2);
+        assert_eq!(
+            encode_envelope(KeystoreProvider::WindowsDpapiCng, b"p"),
+            b"AKSB\x01\x01\x01\0\0\0p"
+        );
+        assert_eq!(
+            encode_envelope(KeystoreProvider::LinuxSecretService, b"p"),
+            b"AKSB\x01\x02\x01\0\0\0p"
+        );
+        assert_eq!(KeystoreProvider::MacosKeychainDataProtectionV1.tag(), 3);
+        assert_eq!(
+            KeystoreProvider::MacosKeychainDataProtectionV1.as_str(),
+            "MACOS_KEYCHAIN_DATA_PROTECTION_V1"
+        );
     }
 }

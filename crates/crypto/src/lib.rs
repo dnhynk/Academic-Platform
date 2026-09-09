@@ -41,7 +41,9 @@ pub use keys::{
     IDENTIFIER_BYTES, KEY_BYTES, ProfileId, RandomnessUnavailable, RecipientMacKey,
     RecipientWrapKey, RecoverySecret, RehearsalKey, StoreKey, VaultMasterKey,
 };
-pub use keystore::{DeviceKeystore, KeystoreFailure};
+pub use keystore::{
+    DeviceKeystore, KeystoreFailure, PreparedDeviceSeal, RecoverableDeviceKeystore,
+};
 #[cfg(feature = "os-keystore")]
 pub use keystore::{PlatformKeystore, purge as purge_device_key};
 pub use recipient::{
@@ -72,6 +74,12 @@ pub const PHASE2_KEY_FAULT_IDS: &[&str] = &["KY01", "KY02", "KY06", "KY07", "KY0
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[non_exhaustive]
 pub enum UnlockError {
+    /// An add-only persistent broker requires the recoverable creation helper.
+    #[error("this broker requires durable incomplete-recipient staging before seal")]
+    PublicationJournalRequired,
+    /// The incomplete recipient was not confirmed durable; seal was not called.
+    #[error("the incomplete recipient could not be durably staged; no seal was attempted")]
+    PublicationJournalUnavailable,
     /// The operating-system broker could not be reached. The profile stays
     /// locked; there is no weaker key to fall back to.
     #[error(
@@ -234,11 +242,12 @@ fn wrap_key_from(bytes: &[u8]) -> Result<RecipientWrapKey, UnlockError> {
     Ok(RecipientWrapKey::from_zeroizing(Zeroizing::new(sized)))
 }
 
-/// Generates a Vault Master Key and its device recipient in one step.
+/// Wraps an existing Vault Master Key for a legacy one-step device broker.
 ///
-/// Nothing is written: the caller receives the record to persist. The `KY08`
-/// failpoint stands between generating key material and returning it, so a
-/// harness can prove a termination there leaves no key material behind.
+/// The broker may persist a wrapping key. Add-only brokers such as macOS must
+/// use `create_recoverable_device_recipient` instead; this helper refuses them
+/// before mutation. The historical Windows/Linux behavior remains unchanged.
+/// The in-memory KY08 fixture establishes no persistent-broker recovery claim.
 pub fn create_device_recipient<K: DeviceKeystore + ?Sized>(
     master: &VaultMasterKey,
     profile: ProfileId,
@@ -246,6 +255,9 @@ pub fn create_device_recipient<K: DeviceKeystore + ?Sized>(
     label: &str,
     keystore: &K,
 ) -> Result<RecipientRecord, UnlockError> {
+    if keystore.requires_publication_journal() {
+        return Err(UnlockError::PublicationJournalRequired);
+    }
     let device_key = DeviceWrappingKey::generate()?;
     let blob = keystore
         .seal(label, device_key.expose_secret())
@@ -273,6 +285,105 @@ pub fn create_device_recipient<K: DeviceKeystore + ?Sized>(
             },
         )
     })
+}
+
+/// A durable incomplete-recipient write could not be confirmed.
+///
+/// Carries no path, record or native error text. The caller may keep detailed
+/// storage diagnostics within its own boundary without exposing record bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("incomplete recipient persistence could not be confirmed")]
+pub struct PublicationJournalFailure;
+
+/// Creates an add-only device recipient with durable recovery before seal.
+///
+/// All random generation, wrapping and MAC work completes before `persist`.
+/// That callback must durably store the complete record as an incomplete
+/// publication, under exclusive caller ownership, and return success only
+/// after its storage durability boundary. It must not overwrite an outstanding
+/// attempt. No plaintext key is passed to it. No native seal occurs on error.
+///
+/// After callback success, retain that exact record on every error/interruption
+/// until final recipient publication is durable or exact cleanup succeeds.
+/// Restart decodes it with `RecipientRecord::from_canonical_cbor`: either verify/open it
+/// with `unlock_with_device` before publishing, or use
+/// `purge_incomplete_device_recipient` and start a new attempt. Never reseal an
+/// old generation. A cleanup refusal is not absence and must retain the record.
+///
+/// This crate performs no filesystem writes or automatic rollback. The caller
+/// must reconcile final publication before cleanup, and serialize publication,
+/// cleanup and retry so an incomplete record cannot revoke a published key.
+pub fn create_recoverable_device_recipient<K, F>(
+    master: &VaultMasterKey,
+    profile: ProfileId,
+    recipient_id: [u8; IDENTIFIER_BYTES],
+    label: &str,
+    keystore: &K,
+    persist: F,
+) -> Result<RecipientRecord, UnlockError>
+where
+    K: RecoverableDeviceKeystore + ?Sized,
+    F: FnOnce(&RecipientRecord) -> Result<(), PublicationJournalFailure>,
+{
+    let prepared = keystore
+        .prepare_seal(label)
+        .map_err(|failure| keystore_error(failure, keystore.provider(), label))?;
+    let device_key = DeviceWrappingKey::generate()?;
+    let wrap_key = wrap_key_from(device_key.expose_secret())?;
+    let record = recipient::wrap(
+        master,
+        profile,
+        recipient_id,
+        RecipientParameters::DeviceKeystore {
+            provider: keystore.provider().to_owned(),
+            label: label.to_owned(),
+        },
+        prepared.blob().to_vec(),
+        &wrap_key,
+    )
+    .map_err(|error| {
+        from_recipient_error(
+            error,
+            UnlockError::KeystoreKeyRejected {
+                provider: keystore.provider().to_owned(),
+            },
+        )
+    })?;
+    persist(&record).map_err(|_| UnlockError::PublicationJournalUnavailable)?;
+    prepared
+        .seal(device_key.expose_secret())
+        .map_err(|failure| keystore_error(failure, keystore.provider(), label))?;
+    fault::trip(FaultPoint::Ky08);
+    Ok(record)
+}
+
+/// Retries exact cleanup of a durably recorded, unpublished device recipient.
+///
+/// The caller must first reconcile its publication journal and confirm this
+/// record is still incomplete. Borrowing preserves its recovery identity on
+/// failure. Keep the durable record until cleanup succeeds, including across
+/// restart. False means this generation is absent; it never selects a later
+/// generation using the same label. This does not revoke recovered memory.
+pub fn purge_incomplete_device_recipient<K: RecoverableDeviceKeystore + ?Sized>(
+    record: &RecipientRecord,
+    profile: ProfileId,
+    keystore: &K,
+) -> Result<bool, UnlockError> {
+    if record.profile_id() != profile {
+        return Err(UnlockError::ProfileMismatch);
+    }
+    let RecipientParameters::DeviceKeystore { provider, label } = record.parameters() else {
+        return Err(UnlockError::RecipientKindMismatch);
+    };
+    if provider != keystore.provider() {
+        return Err(UnlockError::KeystoreProviderMismatch {
+            expected: provider.clone(),
+            actual: keystore.provider().to_owned(),
+        });
+    }
+    keystore
+        .purge_incomplete(label, record.keystore_blob())
+        .map_err(|failure| keystore_error(failure, provider, label))
 }
 
 /// Wraps an existing Vault Master Key for a recovery recipient.

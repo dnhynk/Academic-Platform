@@ -101,6 +101,7 @@ const SECRET_BEARING_TYPES = new Map([
   ["OpenedHeader", "the raw per-object DEK and the plaintext digest"],
   ["EncryptedObjectReader", "a buffer of decrypted artifact plaintext"],
   ["RecoveredSecret", "the secret an operating-system broker returned"],
+  ["PreparedSeal", "the exact pre-seal broker blob retained for recipient publication recovery"],
   ["BackupMasterKey", "the 32-byte backup root"],
   ["DomainKeyring", "raw domain key bytes"],
   ["EncryptedDomainKeyring", "per-domain KEKs and locator keys"],
@@ -468,6 +469,7 @@ const BYTE_FIELD_CLASSES = new Map([
   // which is the thing `P2-R1` put `blob` in the vocabulary for -- and the
   // alternation missed this one because of the four characters in front of it.
   ["RecipientRecord.keystore_blob", "key-material"],
+  ["PreparedSeal.blob", "key-material"],
   ["RecipientRecord.recipient_id", "identifier"],
   ["RecipientRecord.record_mac", "mac"],
   ["RecipientRecord.wrap_nonce", "nonce"],

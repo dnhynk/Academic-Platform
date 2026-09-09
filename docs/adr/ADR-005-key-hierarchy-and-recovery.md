@@ -119,6 +119,63 @@ A type carrying key material or decrypted plaintext must not derive `Debug`; `mi
 
 The decision is therefore to keep `plain` and state the exposure here rather than in a source comment only. It is revisited if the threat model ever admits an attacker who can observe the session bus but cannot talk to the broker; that attacker does not exist in the current model, where both capabilities come with being the same user.
 
+## macOS data-protection Keychain (T251)
+
+The macOS implementation adds `MACOS_KEYCHAIN_DATA_PROTECTION_V1`, provider tag
+3, through the same private FFI leaf. Existing provider tags and blob payloads
+stay unchanged. It explicitly selects the data-protection Keychain, disables
+synchronization, uses `WhenUnlockedThisDeviceOnly`, and refuses interaction,
+duplicate labels and main-thread blocking calls. A random item generation binds
+open and purge to one creation, so an old blob cannot delete a later key under
+the same label. It stores generic passwords and makes no Secure Enclave or
+hardware-backed claim.
+
+The [macOS device keystore contract](../contracts/macos-device-keystore.md)
+records the required signed-in process identity, provisioning and access-group
+continuity, no-fallback behavior, persistence and purge limits, and exact native
+acceptance prerequisites. A system launchd daemon cannot use this provider.
+The outgoing mutable CF buffer and recovered Rust buffer are zeroized; Apple's
+immutable returned CFData and internal copies are additional buffers we cannot
+safely clear. Earlier platform canary observations do not cover those copies.
+Hosted refusal/build evidence does not establish native positive acceptance,
+packaging, hardware protection or H1 admission.
+
+### Add-only recipient publication recovery (T268 / PR119 R1)
+
+Enabling macOS under the existing one-step recipient helper exposed a lifetime
+gap: a fallible wrap after successful persistent seal, or interruption before
+the record was returned/published, lost the only random generation blob. A
+same-label retry correctly refused the duplicate, but could not recover or
+purge the orphan. Local object destruction and the in-memory KY08 fixture do
+not establish persistent recovery, and no native RNG failure is claimed.
+
+The correction prepares a fresh, private, single-use seal identity first and
+finishes all recipient cryptography before native add. A required caller
+callback durably stages the complete encrypted recipient as an incomplete
+publication; callback error prevents add. The caller retains that record across
+ambiguous add errors, KY08 and failed final publication, resolving it only after
+durable publication or exact cleanup. Restart can open the staged recipient or
+purge only its exact generation; cleanup refusal retains the identity and a
+fresh attempt uses a fresh token. No API rebuilds that token from old bytes.
+
+The optional `RecoverableDeviceKeystore` seam preserves existing trait
+implementations. macOS requires it and refuses the legacy crypto helper before
+mutation; Windows/Linux formats and legacy behavior are unchanged. Native query
+selection and atomic duplicate refusal remain unchanged. Storage durability,
+exclusive incomplete-attempt ownership and final-publication reconciliation
+are caller obligations, detailed in the macOS contract. Bounded persistent
+fixture tests exercise restart and cleanup refusal; they do not grant native
+crash, provisioning or H1 acceptance. Exact crypto/keystore item inventories are
+regenerated through the unchanged deterministic reader for this API change.
+
+The exact item inventory is regenerated only for `keystore-platform`, using
+the unchanged `contracts/tests/support` compilation-unit and item reader. Its
+diff records the new private module, versioned provider and error variant;
+neither old provider payloads nor the inventory's enforcement rules change.
+The dependency receipt admits the two target-only framework bindings and the
+new use of existing `getrandom` for generation IDs. The link inventory records
+its `libc` edge while the source-level prohibition on socket calls remains.
+
 ## Rotation and revocation
 
 Rotating a domain KEK means rotating the Vault Master Key: `KEK_d` and `SKEY_p`
