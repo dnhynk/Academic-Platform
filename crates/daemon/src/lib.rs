@@ -4,32 +4,58 @@
 //! reconciles V1 on the dedicated writer thread, publishes a fresh session
 //! nonce, and only then exposes a current-user-only local transport.
 
+#[cfg(all(feature = "plaintext-daemon", feature = "encrypted-synthetic-daemon"))]
+compile_error!("plaintext-daemon and encrypted-synthetic-daemon are mutually exclusive");
+
+#[cfg(feature = "encrypted-synthetic-daemon")]
+pub mod encrypted;
+
+#[cfg(feature = "plaintext-daemon")]
 mod readers;
+#[cfg(feature = "plaintext-daemon")]
 mod runtime_meta;
+#[cfg(feature = "plaintext-daemon")]
 mod service;
+#[cfg(feature = "plaintext-daemon")]
 mod shutdown;
+#[cfg(feature = "plaintext-daemon")]
 mod singleton;
+#[cfg(feature = "plaintext-daemon")]
 mod transport;
+#[cfg(feature = "plaintext-daemon")]
 mod writer;
 
+#[cfg(feature = "plaintext-daemon")]
 use std::{fmt, io, time::Duration};
 
+#[cfg(feature = "plaintext-daemon")]
 use academic_core::local_service::LocalServiceError;
+#[cfg(feature = "plaintext-daemon")]
 use academic_rpc::RpcError;
+#[cfg(feature = "plaintext-daemon")]
 use academic_store::error::StoreError;
+#[cfg(feature = "plaintext-daemon")]
 use thiserror::Error;
 
+#[cfg(feature = "plaintext-daemon")]
 pub use readers::ReaderFactory;
+#[cfg(feature = "plaintext-daemon")]
 pub use runtime_meta::SessionNonce;
+#[cfg(feature = "plaintext-daemon")]
 pub use service::{DaemonConfig, RunningDaemon};
 #[cfg(unix)]
+#[cfg(feature = "plaintext-daemon")]
 pub use transport::MAX_UNIX_ENDPOINT_PATH_LEN;
+#[cfg(feature = "plaintext-daemon")]
 pub use transport::{LocalEndpoint, runtime_profile_directory, session_metadata_path};
+#[cfg(feature = "plaintext-daemon")]
 pub use writer::{AdmissionError, AdmittedMutation, WriterQueue};
 
 /// Product binary name for the local-core daemon.
+#[cfg(feature = "plaintext-daemon")]
 pub const DAEMON_BINARY_NAME: &str = "academicd";
 /// Reversible Phase 1 bounded-writer queue default.
+#[cfg(feature = "plaintext-daemon")]
 pub const WRITER_QUEUE_CAPACITY: usize = 64;
 /// Maximum number of connections served at the same time.
 ///
@@ -40,6 +66,7 @@ pub const WRITER_QUEUE_CAPACITY: usize = 64;
 /// accepting and only drains, so held-open connections can no longer grow the
 /// number of live serve tasks, descriptors, or transport instances without
 /// limit.
+#[cfg(feature = "plaintext-daemon")]
 pub const MAX_CONCURRENT_CONNECTIONS: usize = 32;
 /// Bounded wait for one client frame before the connection is closed.
 ///
@@ -48,11 +75,14 @@ pub const MAX_CONCURRENT_CONNECTIONS: usize = 32;
 /// needs milliseconds and never a network round trip. Ten seconds is far above
 /// any local scheduling delay and still stops a stalled or hostile client from
 /// holding a served slot for the lifetime of the daemon.
+#[cfg(feature = "plaintext-daemon")]
 pub const CLIENT_FRAME_TIMEOUT: Duration = Duration::from_secs(10);
 /// Capability prefix carrying the fresh current-session nonce.
+#[cfg(feature = "plaintext-daemon")]
 pub const SESSION_NONCE_CAPABILITY_PREFIX: &str = "learning-platform.local.session-nonce.";
 
 /// Fail-closed daemon startup or transport error.
+#[cfg(feature = "plaintext-daemon")]
 #[derive(Debug, Error)]
 pub enum DaemonError {
     /// The profile failed S1 validation or opening.
@@ -101,6 +131,7 @@ pub enum DaemonError {
     ListenerTask(String),
 }
 
+#[cfg(feature = "plaintext-daemon")]
 pub(crate) fn daemon_io(
     operation: &'static str,
     path: impl fmt::Display,

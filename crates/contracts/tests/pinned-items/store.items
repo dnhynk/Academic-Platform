@@ -338,8 +338,10 @@ crates/store/src/cipher.rs [pub] impl EncryptedProfile :: #[must_use] const fn c
 crates/store/src/cipher.rs [pub] impl EncryptedProfile :: #[must_use] const fn migration_status(&self) -> MigrationStatus |8f78f939a482d2d3
 crates/store/src/cipher.rs [pub] impl EncryptedProfile :: #[must_use] fn database_path(&self) -> &Path |f8538a3bafe42241
 crates/store/src/cipher.rs [pub] impl EncryptedProfile :: #[must_use] fn root(&self) -> &Path |d4f02e3f49578fdd
+crates/store/src/cipher.rs [pub] impl EncryptedProfile :: fn detail_incarnation(&self, key: &StoreKey) -> StoreResult<[u8; 32]> |8f706275508d49b7
 crates/store/src/cipher.rs [pub] impl EncryptedProfile :: fn open_acceptance_store(&self, key: &StoreKey) -> StoreResult<AcceptanceStore> |259ccffa75cd50aa
 crates/store/src/cipher.rs [pub] impl EncryptedProfile :: fn open_reader(&self, key: &StoreKey) -> StoreResult<ReaderConnection> |1abc99f62468118c
+crates/store/src/cipher.rs [pub] impl EncryptedProfile :: fn read_detail_incarnation(&self, key: &StoreKey) -> StoreResult<[u8; 32]> |35874ea8e873ba87
 crates/store/src/cipher.rs [pub] impl IncompleteEncryptedProfile :: #[must_use] fn root(&self) -> &Path |d4f02e3f49578fdd
 crates/store/src/cipher.rs [pub] impl IncompleteEncryptedProfile :: fn complete<P: PathProbe + ?Sized>( self, probe: &P, key: &StoreKey, creating_build_digest: [u8; 32], ) -> StoreResult<EncryptedProfile> |317d3ad0069125a4
 crates/store/src/connection.rs [priv] #[cfg(all(test, not(feature = "sqlcipher-store")))] mod tests
@@ -883,8 +885,10 @@ crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] use 
 crates/store/src/profile.rs [priv] #[cfg(not(feature = "sqlcipher-store"))] use std::path::PathBuf |ee071d6ff273c970
 crates/store/src/profile.rs [priv] use crate::{ error::{StoreError, StoreResult}, path_policy::PathPolicyViolation, platform, } |21858c32f0f05b6c
 crates/store/src/profile.rs [priv] use std::{ fs::{self, File, OpenOptions}, io::{Read, Write}, path::Path, } |dad5ed3630b58c4e
+crates/store/src/profile.rs [pub(crate)] fn detail_incarnation( root: &Path, random: impl FnOnce() -> StoreResult<Vec<u8>>, ) -> StoreResult<[u8; 32]> |e6e6eb63568f2c05
 crates/store/src/profile.rs [pub(crate)] fn probe_failure(failure: crate::path_policy::PathProbeFailure) -> StoreError |c659e88d547851e2
 crates/store/src/profile.rs [pub(crate)] fn read_bounded_file(path: &Path, maximum_bytes: usize) -> StoreResult<Vec<u8>> |09422521337d009c
+crates/store/src/profile.rs [pub(crate)] fn read_detail_incarnation(root: &Path) -> StoreResult<[u8; 32]> |514db69832b25c12
 crates/store/src/profile.rs [pub(crate)] fn require_regular_file(path: &Path) -> StoreResult<()> |c920eb93a771d59e
 crates/store/src/profile.rs [pub(crate)] fn sync_directory(path: &Path) -> StoreResult<()> |dfd950580e267684
 crates/store/src/profile.rs [pub(crate)] fn sync_parent_directory(path: &Path) -> StoreResult<()> |6133bbf0b103842c
@@ -906,7 +910,7 @@ crates/store/src/profile.rs [pub] impl SyntheticIngestManifest<'static> :: #[mus
 crates/store/src/profile.rs [pub] impl SyntheticProfile :: #[must_use] const fn migration_status(&self) -> MigrationStatus |8f78f939a482d2d3
 crates/store/src/profile.rs [pub] impl SyntheticProfile :: #[must_use] fn database_path(&self) -> &Path |f8538a3bafe42241
 crates/store/src/profile.rs [pub] impl SyntheticProfile :: #[must_use] fn root(&self) -> &Path |d4f02e3f49578fdd
-crates/store/src/profile.rs [pub] impl SyntheticProfile :: fn detail_incarnation(&self) -> StoreResult<[u8; 32]> |02db7b4e115e0dab
+crates/store/src/profile.rs [pub] impl SyntheticProfile :: fn detail_incarnation(&self) -> StoreResult<[u8; 32]> |1a6f57d4066129f0
 crates/store/src/profile.rs [pub] impl SyntheticProfile :: fn open_acceptance_store(&self) -> StoreResult<AcceptanceStore> |cfb93aa55d6db200
 crates/store/src/profile.rs [pub] impl SyntheticProfile :: fn open_reader(&self) -> StoreResult<ReaderConnection> |33c62c53b1679235
 crates/store/src/proposal_closure_tests.rs [priv] #[allow(clippy::too_many_arguments)] fn insert_disposition( connection: &Connection, proposal: &[u8], seq: i64, disposition: &str, actor_class: &str, explicit_approval: i64, supersedes: Option<i64>, ) -> rusqlite::Result<usize> |94641270c503c369

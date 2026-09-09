@@ -1,0 +1,43 @@
+[package]
+name = "academic-encrypted-session-tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Non-shipping integration host. No product package depends on this package.
+# Keeping its default empty preserves workspace plaintext test selection.
+[features]
+default = []
+encrypted-synthetic-tests = [
+  "dep:academic-core",
+  "dep:academic-daemon",
+  "dep:academic-contracts",
+  "dep:academic-crypto",
+  "dep:academic-domain",
+  "dep:academic-store",
+  "dep:academic-vault",
+  "dep:ed25519-dalek",
+  "academic-core/encrypted-synthetic-core",
+  "academic-daemon/encrypted-synthetic-daemon",
+  "academic-store/sqlcipher-store",
+  "academic-vault/aead-objects",
+]
+
+[dependencies]
+academic-core = { path = "../core", default-features = false, optional = true }
+academic-daemon = { path = "../daemon", default-features = false, optional = true }
+academic-contracts = { path = "../contracts", optional = true }
+academic-crypto = { path = "../crypto", optional = true }
+academic-domain = { path = "../domain", optional = true }
+academic-store = { path = "../store", default-features = false, optional = true }
+academic-vault = { path = "../vault", optional = true }
+ed25519-dalek = { workspace = true, optional = true }
+
+[[test]]
+name = "encrypted_session"
+required-features = ["encrypted-synthetic-tests"]
+
+[lints]
+workspace = true

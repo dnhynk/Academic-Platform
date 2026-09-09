@@ -187,6 +187,7 @@ name = "academic-core"
 version = "0.1.0"
 dependencies = [
  "academic-contracts",
+ "academic-crypto",
  "academic-domain",
  "academic-ledger",
  "academic-portability",
@@ -372,6 +373,20 @@ version = "0.1.0"
 dependencies = [
  "academic-policy",
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "academic-encrypted-session-tests"
+version = "0.1.0"
+dependencies = [
+ "academic-contracts",
+ "academic-core",
+ "academic-crypto",
+ "academic-daemon",
+ "academic-domain",
+ "academic-store",
+ "academic-vault",
+ "ed25519-dalek",
 ]
 
 [[package]]

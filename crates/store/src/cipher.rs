@@ -153,6 +153,23 @@ impl EncryptedProfile {
     pub fn open_reader(&self, key: &StoreKey) -> StoreResult<ReaderConnection> {
         open_keyed_reader(&self.database_path, key)
     }
+
+    /// Local correlation identity, preserved on ordinary same-root reopen.
+    /// A keyed, admitted read precedes even an existing marker's read. This
+    /// metadata neither proves a synthetic corpus nor grants service admission.
+    pub fn detail_incarnation(&self, key: &StoreKey) -> StoreResult<[u8; 32]> {
+        let reader = self.open_reader(key)?;
+        crate::profile::detail_incarnation(&self.root, || {
+            reader.query_row("SELECT randomblob(32)", [], |row| row.get(0))
+        })
+    }
+
+    /// Reads an existing local incarnation after keyed admission. A missing or
+    /// corrupt marker refuses; reader validation never creates or repairs it.
+    pub fn read_detail_incarnation(&self, key: &StoreKey) -> StoreResult<[u8; 32]> {
+        let _reader = self.open_reader(key)?;
+        crate::profile::read_detail_incarnation(&self.root)
+    }
 }
 
 /// A root whose incomplete marker is durably written but whose database is not

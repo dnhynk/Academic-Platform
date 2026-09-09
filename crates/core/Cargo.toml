@@ -7,9 +7,20 @@ license.workspace = true
 publish.workspace = true
 
 [features]
-default = []
-synthetic-detail-fixtures = []
+default = ["plaintext-core"]
+plaintext-core = [
+  "academic-store/bundled-sqlite",
+  "dep:academic-portability",
+  "dep:academic-projections",
+]
+encrypted-synthetic-core = [
+  "academic-store/sqlcipher-store",
+  "academic-vault/aead-objects",
+  "dep:academic-crypto",
+]
+synthetic-detail-fixtures = ["plaintext-core"]
 phase1-fault-injection = [
+  "plaintext-core",
   "academic-portability/phase1-fault-injection",
   "academic-projections/phase1-fault-injection",
   "academic-vault/phase1-fault-injection",
@@ -17,12 +28,13 @@ phase1-fault-injection = [
 
 [dependencies]
 academic-contracts = { path = "../contracts" }
+academic-crypto = { path = "../crypto", optional = true }
 academic-domain = { path = "../domain" }
 academic-ledger = { path = "../ledger" }
-academic-portability = { path = "../portability" }
-academic-projections = { path = "../projections" }
+academic-portability = { path = "../portability", optional = true }
+academic-projections = { path = "../projections", optional = true }
 academic-rpc = { path = "../rpc" }
-academic-store = { path = "../store" }
+academic-store = { path = "../store", default-features = false }
 academic-vault = { path = "../vault" }
 ed25519-dalek.workspace = true
 hex.workspace = true
@@ -48,3 +60,51 @@ rusqlite.workspace = true
 
 [lints]
 workspace = true
+
+[[test]]
+name = "bitemporal_time_travel"
+required-features = ["plaintext-core"]
+
+[[test]]
+name = "projection_format"
+required-features = ["plaintext-core"]
+
+[[test]]
+name = "projection_fts"
+required-features = ["plaintext-core"]
+
+[[test]]
+name = "projection_generation"
+required-features = ["plaintext-core"]
+
+[[test]]
+name = "projection_graph"
+required-features = ["plaintext-core"]
+
+[[test]]
+name = "projection_rank_isolation"
+required-features = ["plaintext-core"]
+
+[[test]]
+name = "projection_rebuild"
+required-features = ["plaintext-core"]
+
+[[test]]
+name = "projection_semantics"
+required-features = ["plaintext-core"]
+
+[[test]]
+name = "projection_snapshot"
+required-features = ["plaintext-core"]
+
+[[test]]
+name = "projection_source_binding"
+required-features = ["plaintext-core"]
+
+[[test]]
+name = "projection_verification"
+required-features = ["plaintext-core"]
+
+[[test]]
+name = "scenario_isolation"
+required-features = ["plaintext-core"]

@@ -1,28 +1,33 @@
-crates/daemon/src/lib.rs [priv] mod readers
-crates/daemon/src/lib.rs [priv] mod runtime_meta
-crates/daemon/src/lib.rs [priv] mod service
-crates/daemon/src/lib.rs [priv] mod shutdown
-crates/daemon/src/lib.rs [priv] mod singleton
-crates/daemon/src/lib.rs [priv] mod transport
-crates/daemon/src/lib.rs [priv] mod writer
-crates/daemon/src/lib.rs [priv] use academic_core::local_service::LocalServiceError |509ad15953e86b77
-crates/daemon/src/lib.rs [priv] use academic_rpc::RpcError |7838205297dc75f9
-crates/daemon/src/lib.rs [priv] use academic_store::error::StoreError |8d1aea213369cac9
-crates/daemon/src/lib.rs [priv] use std::{fmt, io, time::Duration} |7f4b917f01315308
-crates/daemon/src/lib.rs [priv] use thiserror::Error |fc76a959c1db87ed
-crates/daemon/src/lib.rs [pub(crate)] fn daemon_io( operation: &'static str, path: impl fmt::Display, source: io::Error, ) -> DaemonError |86ac79532a83a7c9
-crates/daemon/src/lib.rs [pub] #[cfg(unix)] use transport::MAX_UNIX_ENDPOINT_PATH_LEN |948eabe120cc358c
-crates/daemon/src/lib.rs [pub] #[derive(Debug, Error)] enum DaemonError |d68126cb98210b87
-crates/daemon/src/lib.rs [pub] const CLIENT_FRAME_TIMEOUT: Duration |e8cf037568eb89d3
-crates/daemon/src/lib.rs [pub] const DAEMON_BINARY_NAME: &str |785e7fcfe605b820
-crates/daemon/src/lib.rs [pub] const MAX_CONCURRENT_CONNECTIONS: usize |f78621a0979863b2
-crates/daemon/src/lib.rs [pub] const SESSION_NONCE_CAPABILITY_PREFIX: &str |c9725db0e6f6b7d9
-crates/daemon/src/lib.rs [pub] const WRITER_QUEUE_CAPACITY: usize |0f29afbb3cf78d8d
-crates/daemon/src/lib.rs [pub] use readers::ReaderFactory |2dca95eaa63d6b4f
-crates/daemon/src/lib.rs [pub] use runtime_meta::SessionNonce |fcbe7ee3f1df3f13
-crates/daemon/src/lib.rs [pub] use service::{DaemonConfig, RunningDaemon} |ff3c388accc656ca
-crates/daemon/src/lib.rs [pub] use transport::{LocalEndpoint, runtime_profile_directory, session_metadata_path} |ec63ca8bb254a857
-crates/daemon/src/lib.rs [pub] use writer::{AdmissionError, AdmittedMutation, WriterQueue} |0910f2c04d6990a3
+crates/daemon/src/encrypted.rs [priv] use std::{convert::Infallible, path::Path} |e30b1916cad60483
+crates/daemon/src/encrypted.rs [pub] #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)] #[error("encrypted synthetic service unavailable: selected-service admission is not implemented")] struct EncryptedSyntheticStartupUnavailable |b71f2c5f2ed4beda
+crates/daemon/src/encrypted.rs [pub] fn start( _profile_root: &Path, _runtime_root: &Path, ) -> Result<Infallible, EncryptedSyntheticStartupUnavailable> |b184a1671858fc36
+crates/daemon/src/lib.rs [priv] #[cfg(all(feature = "plaintext-daemon", feature = "encrypted-synthetic-daemon"))] compile_error!("plaintext-daemon and encrypted-synthetic-daemon are mutually exclusive") |af45bb1945fcb06c
+crates/daemon/src/lib.rs [priv] #[cfg(feature = "plaintext-daemon")] mod readers
+crates/daemon/src/lib.rs [priv] #[cfg(feature = "plaintext-daemon")] mod runtime_meta
+crates/daemon/src/lib.rs [priv] #[cfg(feature = "plaintext-daemon")] mod service
+crates/daemon/src/lib.rs [priv] #[cfg(feature = "plaintext-daemon")] mod shutdown
+crates/daemon/src/lib.rs [priv] #[cfg(feature = "plaintext-daemon")] mod singleton
+crates/daemon/src/lib.rs [priv] #[cfg(feature = "plaintext-daemon")] mod transport
+crates/daemon/src/lib.rs [priv] #[cfg(feature = "plaintext-daemon")] mod writer
+crates/daemon/src/lib.rs [priv] #[cfg(feature = "plaintext-daemon")] use academic_core::local_service::LocalServiceError |882a6a31749a4592
+crates/daemon/src/lib.rs [priv] #[cfg(feature = "plaintext-daemon")] use academic_rpc::RpcError |ff8f4dd0694215de
+crates/daemon/src/lib.rs [priv] #[cfg(feature = "plaintext-daemon")] use academic_store::error::StoreError |af80a872f16f307c
+crates/daemon/src/lib.rs [priv] #[cfg(feature = "plaintext-daemon")] use std::{fmt, io, time::Duration} |c5562824bc1aa803
+crates/daemon/src/lib.rs [priv] #[cfg(feature = "plaintext-daemon")] use thiserror::Error |7cced1a62a1f751e
+crates/daemon/src/lib.rs [pub(crate)] #[cfg(feature = "plaintext-daemon")] fn daemon_io( operation: &'static str, path: impl fmt::Display, source: io::Error, ) -> DaemonError |d6ff55a4bf1b971e
+crates/daemon/src/lib.rs [pub] #[cfg(feature = "encrypted-synthetic-daemon")] mod encrypted
+crates/daemon/src/lib.rs [pub] #[cfg(feature = "plaintext-daemon")] #[derive(Debug, Error)] enum DaemonError |dc1f5942e96768ec
+crates/daemon/src/lib.rs [pub] #[cfg(feature = "plaintext-daemon")] const CLIENT_FRAME_TIMEOUT: Duration |01027190dde410a8
+crates/daemon/src/lib.rs [pub] #[cfg(feature = "plaintext-daemon")] const DAEMON_BINARY_NAME: &str |e9093f627947554f
+crates/daemon/src/lib.rs [pub] #[cfg(feature = "plaintext-daemon")] const MAX_CONCURRENT_CONNECTIONS: usize |233f35bdbfb4af29
+crates/daemon/src/lib.rs [pub] #[cfg(feature = "plaintext-daemon")] const SESSION_NONCE_CAPABILITY_PREFIX: &str |5657992479f0763e
+crates/daemon/src/lib.rs [pub] #[cfg(feature = "plaintext-daemon")] const WRITER_QUEUE_CAPACITY: usize |0701e60d7a7e9b2c
+crates/daemon/src/lib.rs [pub] #[cfg(feature = "plaintext-daemon")] use readers::ReaderFactory |3ad81bf8f3142c00
+crates/daemon/src/lib.rs [pub] #[cfg(feature = "plaintext-daemon")] use runtime_meta::SessionNonce |27c20912bdfb90ec
+crates/daemon/src/lib.rs [pub] #[cfg(feature = "plaintext-daemon")] use service::{DaemonConfig, RunningDaemon} |1d52252afb07a19d
+crates/daemon/src/lib.rs [pub] #[cfg(feature = "plaintext-daemon")] use transport::{LocalEndpoint, runtime_profile_directory, session_metadata_path} |032ba82dacb0d944
+crates/daemon/src/lib.rs [pub] #[cfg(feature = "plaintext-daemon")] use writer::{AdmissionError, AdmittedMutation, WriterQueue} |ee591f937231416a
+crates/daemon/src/lib.rs [pub] #[cfg(unix)] #[cfg(feature = "plaintext-daemon")] use transport::MAX_UNIX_ENDPOINT_PATH_LEN |b92d46d5c9c74919
 crates/daemon/src/main.rs [priv] #[tokio::main] async fn main() -> Result<(), Box<dyn Error>> |ebf036b0957c0db0
 crates/daemon/src/main.rs [priv] use academic_daemon::{DaemonConfig, RunningDaemon} |f44b3a635f65eb02
 crates/daemon/src/main.rs [priv] use std::{env, error::Error, io, path::PathBuf} |16fa757115035986

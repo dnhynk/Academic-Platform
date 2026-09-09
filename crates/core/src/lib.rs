@@ -4,9 +4,22 @@
 //! It accepts only canonically encoded batches whose signature matches an
 //! independently supplied device key.
 
+#[cfg(all(feature = "plaintext-core", feature = "encrypted-synthetic-core"))]
+compile_error!("plaintext-core and encrypted-synthetic-core are mutually exclusive");
+
+#[cfg(any(feature = "plaintext-core", feature = "encrypted-synthetic-core"))]
+mod authenticated_acceptance;
+#[cfg(feature = "plaintext-core")]
 pub mod details;
+#[cfg(any(feature = "plaintext-core", feature = "encrypted-synthetic-core"))]
+mod domain_read;
+#[cfg(feature = "encrypted-synthetic-core")]
+pub mod encrypted_session;
+#[cfg(feature = "plaintext-core")]
 pub mod local_service;
+#[cfg(feature = "plaintext-core")]
 pub mod operations;
+#[cfg(feature = "plaintext-core")]
 pub mod service;
 
 use std::{collections::BTreeSet, fmt, str::FromStr};

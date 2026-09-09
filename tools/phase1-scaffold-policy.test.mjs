@@ -314,6 +314,7 @@ test("workspace_dependency_direction_is_acyclic", () => {
     "academic-curriculum": ["academic-domain", "academic-ingestion"],
     "academic-core": [
       "academic-contracts",
+      "academic-crypto",
       "academic-domain",
       "academic-ledger",
       "academic-portability",
@@ -372,6 +373,17 @@ test("workspace_dependency_direction_is_acyclic", () => {
     // Nothing depends on this one: the section 3.6 wiring from the core is
     // `P2-G4`'s and `P2-A2`'s round, not this task's.
     "academic-egress-boundary": ["academic-policy"],
+    // D1's non-shipping integration host: all edges are optional and its
+    // default is empty. No product package may depend on this host.
+    "academic-encrypted-session-tests": [
+      "academic-contracts",
+      "academic-core",
+      "academic-crypto",
+      "academic-daemon",
+      "academic-domain",
+      "academic-store",
+      "academic-vault",
+    ],
     // `P2-X7`. Section 25.13's evidence and correction centre. Three product
     // edges, each a boundary it reuses rather than rebuilds: `academic-domain`
     // for every identifier a centre entry names and for the `P2-C6` bitemporal
@@ -3633,6 +3645,7 @@ const SOCKET_CAPABLE_CRATES = new Set([
  * almost everything through `libsqlite3-sys` and is listed rather than excused.
  */
 const SOCKET_CAPABLE_CLOSURES = {
+  "academic-encrypted-session-tests": [],
   "academic-admission": ["libc"],
   "academic-capture-client": ["libc"],
   // `P2-L1`. `libc` reaches it through `academic-domain`. Its own `libc` and
@@ -5061,6 +5074,8 @@ test("encrypted_store_lane_replaces_the_plaintext_lane", async () => {
   // `encrypted_portability_lane_is_not_default` and
   // `rotation_engine_lane_is_not_default` check for the others.
   assert.deepEqual(storeCryptoDependents, [
+    "academic-core",
+    "academic-encrypted-session-tests",
     "academic-portability",
     "academic-recovery",
     "academic-repository",
@@ -5068,6 +5083,12 @@ test("encrypted_store_lane_replaces_the_plaintext_lane", async () => {
     "academic-store",
     "academic-vault",
   ]);
+  // D1's two additional declarations are optional: the keyed core session
+  // and its non-shipping integration host. Neither activates on defaults.
+  for (const name of ["academic-core", "academic-encrypted-session-tests"]) {
+    assert.equal(packagesByName.get(name).dependencies.find((edge) =>
+      edge.name === "academic-crypto").optional, true);
+  }
   // The encrypted restore reaches the key schedule through its own edge and
   // the rotation engine through a second one; both are optional and both are
   // selected by the same non-default lane feature.
@@ -5449,6 +5470,106 @@ function shippingTree(selector) {
   return run.stdout.replaceAll(/\([^)]*\)/gu, "");
 }
 
+// D1 selects packages and target kinds explicitly. Metadata above inventories
+// declarations; these trees measure each supported build/test dependency graph.
+test("encrypted_session_graphs_exclude_every_plaintext_consumer", () => {
+  const selectedTree = (selector, kinds) => {
+    const run = spawnSync("cargo", [
+      "tree", "--locked", "--offline", "--edges", kinds,
+      "--format", "{p}|{f}", ...selector,
+    ], { encoding: "utf8", maxBuffer: CARGO_OUTPUT_BYTES });
+    assert.equal(run.status, 0, run.stderr);
+    return run.stdout.replaceAll(/\([^)]*\)/gu, "");
+  };
+  const lanes = [
+    ["core library", ["-p", "academic-core", "--no-default-features", "--features", "encrypted-synthetic-core"], "normal,build"],
+    ["core unit/doc tests", ["-p", "academic-core", "--no-default-features", "--features", "encrypted-synthetic-core"], "normal,build,dev"],
+    ["daemon library", ["-p", "academic-daemon", "--no-default-features", "--features", "encrypted-synthetic-daemon"], "normal,build"],
+    ["isolated integration host", ["-p", "academic-encrypted-session-tests", "--no-default-features", "--features", "encrypted-synthetic-tests"], "normal,build,dev"],
+  ];
+  for (const [label, selector, kinds] of lanes) {
+    const tree = selectedTree(selector, kinds);
+    for (const forbidden of ["academic-portability", "academic-projections", "bundled-sqlite",
+      "plaintext-core", "plaintext-daemon", "synthetic-detail-fixtures"]) {
+      assert.equal(tree.includes(forbidden), false, `${label} selected ${forbidden}`);
+    }
+    assert.match(tree, /academic-store[^\n]*\|[^\n]*sqlcipher-store/u, label);
+    assert.match(tree, /academic-vault[^\n]*\|[^\n]*aead-objects/u, label);
+    assert.ok(tree.includes("academic-crypto"), label);
+    assert.ok(tree.includes("openssl-src"), label);
+  }
+  for (const name of ["academic-core", "academic-daemon"]) {
+    const tree = selectedTree(["-p", name], "normal,build,dev");
+    assert.ok(tree.includes("academic-portability"));
+    assert.ok(tree.includes("academic-projections"));
+    assert.ok(tree.includes("bundled-sqlite"));
+    assert.equal(tree.includes("sqlcipher-store"), false);
+    assert.equal(tree.includes("encrypted-synthetic"), false);
+  }
+  // This negative control records why --all-targets on the daemon is NOT an
+  // isolated encrypted test: its preserved legacy dev edges request plaintext.
+  const unsupported = selectedTree([
+    "-p", "academic-daemon", "--no-default-features", "--features", "encrypted-synthetic-daemon",
+  ], "normal,build,dev");
+  for (const present of ["sqlcipher-store", "bundled-sqlite", "synthetic-detail-fixtures"])
+    assert.ok(unsupported.includes(present), `legacy dev control lost ${present}`);
+});
+
+test("encrypted_session_host_stays_plaintext_under_workspace_fault_selection", async () => {
+  const packages = ["academic-core", "academic-daemon", "academic-portability",
+    "academic-projections", "academic-test-support", "academic-vault"];
+  const features = packages.map((name) => `${name}/phase1-fault-injection`).join(",");
+  const workflow = await readFile(".github/workflows/ci.yml", "utf8");
+  assert.ok(workflow.includes(
+    `cargo clippy --workspace --all-targets --locked --features ${features} -- -D warnings`,
+  ), "the regression must select the existing CI fault-feature union exactly");
+  const run = spawnSync("cargo", [
+    "tree", "--locked", "--offline", "--workspace", "--edges", "normal,build,dev",
+    "--format", "{p}|{f}", "--features", features,
+  ], { encoding: "utf8", maxBuffer: CARGO_OUTPUT_BYTES });
+  assert.equal(run.status, 0, run.stderr);
+  const tree = run.stdout.replaceAll(/\([^)]*\)/gu, "");
+  for (const name of packages)
+    assert.match(tree, new RegExp(`${name}[^\\n]*\\|[^\\n]*phase1-fault-injection`, "u"));
+  for (const present of ["plaintext-core", "plaintext-daemon", "bundled-sqlite"])
+    assert.ok(tree.includes(present), `fault graph lost ${present}`);
+  for (const absent of ["sqlcipher-store", "encrypted-synthetic-core",
+    "encrypted-synthetic-daemon", "encrypted-synthetic-tests"])
+    assert.equal(tree.includes(absent), false, `fault graph selected ${absent}`);
+});
+
+test("encrypted_session_test_targets_and_shipping_boundary_are_closed", () => {
+  const host = packagesByName.get("academic-encrypted-session-tests");
+  assert.deepEqual(host.features.default, []);
+  assert.deepEqual(host.publish, []);
+  assert.deepEqual(devDependencyNames(host), []);
+  assert.ok(host.dependencies.every((dependency) => dependency.optional && dependency.kind === null));
+  assert.deepEqual(workspacePackages.filter((pkg) =>
+    workspaceDependencyNames(pkg).includes(host.name)).map((pkg) => pkg.name), []);
+  assert.deepEqual(host.targets.map((target) => [target.name, target.kind, target["required-features"] ?? []]).toSorted(), [
+    ["academic_encrypted_session_tests", ["lib"], []],
+    ["encrypted_session", ["test"], ["encrypted-synthetic-tests"]],
+  ]);
+  const core = packagesByName.get("academic-core");
+  const daemon = packagesByName.get("academic-daemon");
+  assert.deepEqual(core.features.default, ["plaintext-core"]);
+  assert.deepEqual(daemon.features.default, ["plaintext-daemon"]);
+  assert.deepEqual(core.features["synthetic-detail-fixtures"], ["plaintext-core"]);
+  for (const [pkg, required, expected] of [
+    [core, "plaintext-core", ["bitemporal_time_travel", "projection_format", "projection_fts",
+      "projection_generation", "projection_graph", "projection_rank_isolation", "projection_rebuild",
+      "projection_semantics", "projection_snapshot", "projection_source_binding", "projection_verification", "scenario_isolation"]],
+    [daemon, "plaintext-daemon", ["availability", "backpressure", "details", "domain_details",
+      "multiclient", "phase1_exit", "singleton", "unix_socket", "windows_pipe"]],
+  ]) {
+    const targets = pkg.targets.filter((target) => target.kind.includes("test"));
+    assert.deepEqual(targets.map((target) => target.name).toSorted(), expected);
+    for (const target of targets) assert.deepEqual(target["required-features"], [required]);
+  }
+  assert.deepEqual(daemon.targets.find((target) => target.name === "academicd")["required-features"], ["plaintext-daemon"]);
+  assert.deepEqual(core.targets.find((target) => target.name === "academic-detail-fixture")["required-features"], ["synthetic-detail-fixtures"]);
+});
+
 // t068 section 5, `P2-P2`. The deletion and retention product flow is a
 // workspace crate nothing in the shipping graph links, and the half of it that
 // reaches real `AEAD_CHUNKED_V2` objects — the shredder and the object-tree
@@ -5732,8 +5853,9 @@ test("projection_fault_harness_is_explicit_and_absent_from_product_defaults", as
       "academic-portability/phase1-fault-injection",
       "academic-projections/phase1-fault-injection",
       "academic-vault/phase1-fault-injection",
+      "plaintext-core",
     ],
-    "academic-daemon": ["academic-core/phase1-fault-injection"],
+    "academic-daemon": ["academic-core/phase1-fault-injection", "plaintext-daemon"],
     "academic-portability": [],
     "academic-projections": [],
     "academic-test-support": [],
@@ -5743,6 +5865,8 @@ test("projection_fault_harness_is_explicit_and_absent_from_product_defaults", as
   // default any of these crates is allowed to carry is the one that selects
   // which store lane it links, and `academic-portability` carries exactly that.
   const allowedDefaults = new Map([
+    ["academic-core", ["plaintext-core"]],
+    ["academic-daemon", ["plaintext-daemon"]],
     ["academic-store", ["bundled-sqlite"]],
     ["academic-portability", ["plaintext-portability"]],
   ]);
@@ -6083,6 +6207,63 @@ test("dependency_license_and_source_receipt_is_complete", async () => {
     bound.add(task);
     return found;
   };
+
+  // D1 assigns exactly one local, non-shipping integration host. It goes
+  // through the same receipt/tuple union as every earlier local package.
+  const { receipt: d1Receipt, admitted: d1Admitted, tuples: d1Tuples } = receiptFor("T263-D1");
+  assert.equal(d1Receipt.receipt_version, 1);
+  assert.equal(d1Receipt.owner, "academic-encrypted-session-tests");
+  assert.equal(d1Receipt.license, "UNLICENSED");
+  assert.equal(d1Receipt.publish, false);
+  assert.equal(d1Admitted.size, 0);
+  assert.deepEqual(d1Tuples, [["academic-encrypted-session-tests", "0.1.0", null, null]]);
+  assert.deepEqual(d1Receipt.added_workspace_path_packages, [
+    { name: "academic-encrypted-session-tests", version: "0.1.0", source: null, checksum: null },
+  ]);
+  assert.deepEqual(d1Receipt.summary, {
+    added_external_crate_count: 0, added_workspace_path_package_count: 1,
+    linked_into_binary_count: 0, build_time_only_count: 0,
+    npm_additions: [], npm_install_scripts_added: false, npm_workspace_package_additions: [],
+  });
+  assert.deepEqual(d1Receipt.admissions, []);
+  assert.deepEqual(d1Receipt.vendored_data, []);
+  assert.deepEqual(d1Receipt.default_features, []);
+  const d1Edges = {
+    "academic-contracts": { version: "0.1.0", default_features: true, features: [] },
+    "academic-core": { version: "0.1.0", default_features: false, features: [] },
+    "academic-crypto": { version: "0.1.0", default_features: true, features: [] },
+    "academic-daemon": { version: "0.1.0", default_features: false, features: [] },
+    "academic-domain": { version: "0.1.0", default_features: true, features: [] },
+    "academic-store": { version: "0.1.0", default_features: false, features: [] },
+    "academic-vault": { version: "0.1.0", default_features: true, features: [] },
+    "ed25519-dalek": { version: "2.2.0", default_features: true, features: [] },
+  };
+  assert.deepEqual(d1Receipt.optional_normal_dependencies, d1Edges);
+  const d1Host = packagesByName.get(d1Receipt.owner);
+  assert.deepEqual(d1Host.publish, []);
+  assert.equal(d1Host.license, d1Receipt.license);
+  assert.deepEqual(d1Host.features.default, []);
+  assert.deepEqual(d1Host.dependencies.map((edge) => edge.name).toSorted(), Object.keys(d1Edges));
+  for (const edge of d1Host.dependencies) {
+    const expected = d1Edges[edge.name];
+    assert.equal(edge.optional, true);
+    assert.equal(edge.kind, null);
+    assert.equal(edge.uses_default_features, expected.default_features);
+    assert.deepEqual(edge.features, expected.features);
+    assert.equal(packagesByName.get(edge.name).version, expected.version);
+  }
+  const d1Forwards = ["academic-core/encrypted-synthetic-core",
+    "academic-daemon/encrypted-synthetic-daemon", "academic-store/sqlcipher-store",
+    "academic-vault/aead-objects"];
+  assert.deepEqual(d1Receipt.encrypted_test_feature_forwards, d1Forwards);
+  assert.deepEqual(d1Host.features["encrypted-synthetic-tests"].toSorted(),
+    [...Object.keys(d1Edges).map((name) => `dep:${name}`), ...d1Forwards].toSorted());
+  assert.deepEqual(d1Host.targets.filter((target) =>
+    target.kind.includes("bin") || target.kind.includes("custom-build")), []);
+  assert.equal(d1Receipt.test_feature, "encrypted-synthetic-tests");
+  assert.equal(d1Receipt.test_target, "encrypted_session");
+  assert.deepEqual(d1Host.targets.find((target) => target.name === d1Receipt.test_target)["required-features"], [d1Receipt.test_feature]);
+  assert.deepEqual(workspacePackages.filter((pkg) => workspaceDependencyNames(pkg).includes(d1Host.name)).map((pkg) => pkg.name), []);
 
   const { receipt: runtimeReceipt, admitted: runtimeAdmitted } = receiptFor("P2-X1b");
   assert.equal(runtimeReceipt.gate, "gate_59451294e004");

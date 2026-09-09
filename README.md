@@ -804,6 +804,12 @@ Omit `--smoke` for the ordinary shell; pass `--session <daemon-runtime>/academic
 
 ## Operating a throwaway Phase 1 profile
 
+The optional [encrypted core session scaffold](docs/contracts/encrypted-session-scaffold.md)
+has a separate feature/target matrix and focused verification commands. It opens
+keyed library sessions only; encrypted daemon startup refuses before I/O until
+the separate admission, posture, corpus and startup work is complete. Existing
+plaintext commands below retain their current behavior.
+
 Every path below is synthetic-only and disposable. Do not point any of them at
 real data.
 

@@ -745,16 +745,16 @@ fn the_pin_names_what_it_covers_and_what_it_does_not() -> TestResult {
 }
 
 /// The packages the workspace compiles, counted at `5f5c39c`.
-const WORKSPACE_PACKAGES: usize = 71;
+const WORKSPACE_PACKAGES: usize = 72;
 
 /// The packages the pin covers. Since `P2-RF31` this is all of them.
-const PINNED_PACKAGES: usize = 71;
+const PINNED_PACKAGES: usize = 72;
 
 /// The keys the pin directory holds, counted at `5f5c39c` plus this branch.
 ///
 /// 11 748 over 43 packages before `P2-RF31`. The 28 packages that joined and
 /// the literal values that joined the fingerprint are the difference.
-const PINNED_ITEMS: usize = 18_772;
+const PINNED_ITEMS: usize = 18_861;
 
 /// The file holding one package's pinned item set.
 fn pin_path(repository: &Path, package: &str) -> PathBuf {
@@ -1593,7 +1593,12 @@ fn absolute_paths(code: &str) -> BTreeSet<String> {
 /// uses, over the nine crates that ship an executable. `connector` and
 /// `indexer` are absent because they reach nothing: their whole `main` reads
 /// `PROCESS_CLASS.capabilities()` through an import.
-const BINARY_REACHES: [(&str, &str, &str); 39] = [
+const BINARY_REACHES: [(&str, &str, &str); 40] = [
+    (
+        "daemon",
+        "thiserror::Error",
+        "the existing admitted derive implements the typed unavailable error in the optional encrypted module; startup always refuses before service I/O",
+    ),
     (
         "daemon",
         "academic_rpc::domain_details",
